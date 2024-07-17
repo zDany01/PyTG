@@ -73,6 +73,9 @@ class Commands:
             self.rflag = False
             bot.send_message(message.chat.id, "Operation aborted.")
 
+    def live(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            bot.send_message(message.chat.id, "Safe and Sound")
     #def redocker(self, message: Message):
     #    if(AuthCheck(message.chat.id)):
     #        if(executeCommand("bash", "-c \"docker restart $(docker ps -a -q)\"", "Unable to restart docker containers..").good):
