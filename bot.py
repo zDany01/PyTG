@@ -7,6 +7,7 @@ from origamibot.core.teletypes import *
 
 BOT_TOKEN = "6703837324:AAELx1nu80hppsgprzDdSPHZXMCMm8WWcNw"
 CHAT_ID = 1323764255
+MSG_LIMIT = 50
 bot = Bot(BOT_TOKEN)
 tlock = Lock()
 
@@ -15,6 +16,30 @@ class ProcessOutput:
         self.ecode = exitcode
         self.output = output
         self.good = exitcode == 0
+
+class CodeMessage:
+    def __init__(self, caption: str, message = ""):
+        self.caption = caption
+        self.message = message
+
+    def append(self, text: str):
+        self.message += text
+        return self
+    
+    def create(self, chatID: int):
+        self.messageObject = bot.send_message(chatID, "```{0}\n{1}```".format(self.caption, self.message), "MarkdownV2")
+    
+    def send(self):
+        self.messageObject = bot.edit_message_text(self.messageObject.chat.id, "```{0}\n{1}```".format(self.caption, self.message), self.messageObject.message_id, parse_mode="MarkdownV2")
+    
+    def clear(self):
+        self.message = ""
+
+def sendMsg(chatID: int, message: str) -> Message:
+    return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
+
+def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML"):
+    return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode)
 
 def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
     tlock.acquire()
@@ -26,7 +51,6 @@ def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
     try:
         global exitcode
         global output
-        #process = Popen(path + (' ' + args if args != "" else ""), stdout=PIPE)
         process = Popen(command, stdout=PIPE)
         (output, err) = process.communicate()
         exitcode = process.wait()
@@ -37,7 +61,7 @@ def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
         tlock.release()
     if(exitcode != 0):
         if (errormsg != ""):
-            bot.send_message(CHAT_ID, errormsg)
+            sendMsg(CHAT_ID, errormsg)
         print("Executing command: ",end='')
         for part in command:
             print('|' + part + '|', end=' ')
@@ -48,7 +72,7 @@ def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
 
 def AuthCheck(chat_id: int) -> bool:
     if(chat_id != CHAT_ID):
-        bot.send_message(chat_id, "You are not authorized.")
+        sendMsg(chat_id, "You are not authorized.")
         return False
     return True
 
@@ -69,11 +93,11 @@ class Commands:
     def restart(self, message: Message):
         if(AuthCheck(message.chat.id)):
             if(self.rflag):
-                bot.send_message(message.chat.id, "Rebooting system...")
+                sendMsg(message.chat.id, "Rebooting system...")
                 self.rflag = False
                 executeCommand("reboot")
             else:
-               bot.send_message(message.chat.id, "Are you sure? /yes | /no")
+               sendMsg(message.chat.id, "Are you sure? /yes | /no")
 
     def yes(self, message: Message):
         if(AuthCheck(message.chat.id)):
@@ -83,28 +107,40 @@ class Commands:
     def no(self, message: Message):
         if(AuthCheck(message.chat.id)):
             self.rflag = False
-            bot.send_message(message.chat.id, "Operation aborted.")
+            sendMsg(message.chat.id, "Operation aborted")
 
     def live(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            bot.send_message(message.chat.id, "Safe and Sound")
+            sendMsg(message.chat.id, "Safe and Sound")
+
     def redocker(self, message: Message):
         if(AuthCheck(message.chat.id)):
             containerlistprc = executeCommand("docker", ["ps", "-a", "-q"], "Unable to get container list")
             if not containerlistprc.good:
                 return
             containerlist = containerlistprc.output.splitlines()
-            print(containerlist)
-            restarted = True
+            progressMessage = CodeMessage("PyDocker", "Restarting containers")
+            progressMessage.create(message.chat.id)
+            progressMessage.clear()
+            successNumber = 0
             for container in containerlist:
-                restarted = restarted & executeCommand("docker", ["restart", container], "Unable to restart" + container).good
-            bot.send_message(message.chat.id, "All containers restarted" if restarted else "Not all container were restarted")
+                containerName: str = executeCommand("docker", ["ps", "--filter", "id=" + container, "--format", "{{.Names}}"], "Unable to get container name for CtID: " + container).output.strip()
+                progressMessage.append('\n' + containerName).send()
+                offset = ""
+                for _ in range(1, MSG_LIMIT - len(containerName)):
+                    offset += ' '
+                if executeCommand("docker", ["restart", container], "Unable to restart" + container).good:
+                    progressMessage.append(offset + "✅").send()
+                    successNumber += 1
+                else:
+                    progressMessage.append(offset + "❌").send()
+            sendMsg(message.chat.id, "Restarted {0} of {1} containers".format(successNumber, len(containerlist)))
     
     def showsvc(self, message: Message):
         if(AuthCheck(message.chat.id)):
             processOut = executeCommand("docker", ["ps", "--format", "{{.Names}} -> {{.Status}}"], "Unable to access docker containers")
             if processOut.good:
-                bot.send_message(message.chat.id, processOut.output)
+                sendMsg(message.chat.id, processOut.output)
 
 bot.start()
 bot.add_commands(Commands(bot))
