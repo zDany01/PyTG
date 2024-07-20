@@ -1,0 +1,36 @@
+#!/bin/bash
+
+APP_NAME=TGBot
+PY_PACKAGE=origamibot
+DESC="Telegram bot for managing the server"
+SERVICE_NAME=PyTG
+
+if [[ $EUID -ne 0 ]]; then
+    echo "Run as root"
+    exit 1
+fi
+
+if ! [ -d ./$APP_NAME ]; then
+  virtualenv $APP_NAME
+  source ./$APP_NAME/bin/activate
+  pip3 install $PY_PACKAGE
+  deactivate
+fi
+
+echo "[Unit]
+Description=$DESC
+After=network.target
+StartLimitIntervalSec=0
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+WorkingDirectory=$(pwd)
+ExecStart=$(pwd)/pystart
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/$SERVICE_NAME.service
+systemctl enable $SERVICE_NAME
+systemctl start $SERVICE_NAME
+echo Done.
