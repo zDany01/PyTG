@@ -1,4 +1,3 @@
-from os import system
 from threading import Lock
 from time import sleep
 from origamibot import OrigamiBot as Bot
@@ -35,19 +34,21 @@ class CodeMessage:
     def clear(self):
         self.message = ""
 
-def sendMsg(chatID: int, message: str) -> Message:
-    return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
-
-def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML"):
-    return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode)
+def AuthCheck(chat_id: int) -> bool:
+    if(chat_id != CHAT_ID):
+        bot.send_message(chat_id, "You are not authorized.")
+        return False
+    return True
 
 def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
     tlock.acquire()
     command = []
     command.append(path)
+
     for x in args:
         command.append(x)
     print("Executing " + path + " with args: " + " ".join(args))
+
     try:
         global exitcode
         global output
@@ -59,22 +60,33 @@ def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
         print("[PYTHON ERROR] - " + err2.decode("utf-8"))
     finally:
         tlock.release()
+
     if(exitcode != 0):
         if (errormsg != ""):
             sendMsg(CHAT_ID, errormsg)
+
         print("Executing command: ",end='')
         for part in command:
             print('|' + part + '|', end=' ')
-        print()
+        print()       
         print("Generated this error:" + output.decode("utf-8"))
         return ProcessOutput(exitcode, output.decode("utf-8"))
     return ProcessOutput(exitcode, output.decode("utf-8"))
 
-def AuthCheck(chat_id: int) -> bool:
-    if(chat_id != CHAT_ID):
-        sendMsg(chat_id, "You are not authorized.")
-        return False
-    return True
+def getContainers(onlyActive: bool = False) -> list[str]:
+    containerlistprc = executeCommand("docker", ["ps", "-a", "-q"] if not onlyActive else ["ps", "-q"], "Unable to get container list")
+    if not containerlistprc.good:
+        return
+    return containerlistprc.output.splitlines()
+
+def getContainerData(CtID: str, filterString: str = None) -> str:
+    return executeCommand("docker", ["ps", "-a", "--filter", "id=" + CtID, "--format", filterString] if filterString is not None else ["ps", "-a", "--filter", "id=" + CtID], "Unable to get container data for CtID: " + CtID).output.strip()
+
+def sendMsg(chatID: int, message: str) -> Message:
+    return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
+
+def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML"):
+    return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode)
 
 class Commands:
     rflag = False
@@ -83,12 +95,11 @@ class Commands:
 
     def backup(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            executeCommand("/home/danyb/iSSD/Backup/backup", "", "Error during system backup")
-                
-    
+            executeCommand("/home/danyb/iSSD/Backup/backup", ["--manual"], "Error during system backup")
+                    
     def updatedb(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            executeCommand("/home/danyb/iSSD/AutoJobs/updateDB", "", "Error while updating nginx IP database")
+            executeCommand("/home/danyb/iSSD/AutoJobs/updateDB", errormsg= "Error while updating nginx IP database")
 
     def restart(self, message: Message):
         if(AuthCheck(message.chat.id)):
@@ -109,22 +120,18 @@ class Commands:
             self.rflag = False
             sendMsg(message.chat.id, "Operation aborted")
 
-    def live(self, message: Message):
+    def ping(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            sendMsg(message.chat.id, "Safe and Sound")
+            bot.send_message(message.chat.id, "Pong")
 
     def redocker(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            containerlistprc = executeCommand("docker", ["ps", "-a", "-q"], "Unable to get container list")
-            if not containerlistprc.good:
-                return
-            containerlist = containerlistprc.output.splitlines()
-            progressMessage = CodeMessage("PyDocker", "Restarting containers")
+            containerlist = getContainers(True)
+            progressMessage = CodeMessage("PyDocker", "Restarting active containers..")
             progressMessage.create(message.chat.id)
-            progressMessage.clear()
             successNumber = 0
             for container in containerlist:
-                containerName: str = executeCommand("docker", ["ps", "--filter", "id=" + container, "--format", "{{.Names}}"], "Unable to get container name for CtID: " + container).output.strip()
+                containerName: str = getContainerData(container, "{{.Names}}")
                 progressMessage.append('\n' + containerName).send()
                 offset = ""
                 for _ in range(1, MSG_LIMIT - len(containerName)):
@@ -134,7 +141,7 @@ class Commands:
                     successNumber += 1
                 else:
                     progressMessage.append(offset + "❌").send()
-            sendMsg(message.chat.id, "Restarted {0} of {1} containers".format(successNumber, len(containerlist)))
+            sendMsg(message.chat.id, "Restarted {0} of {1} active containers".format(successNumber, len(containerlist)))
     
     def showsvc(self, message: Message):
         if(AuthCheck(message.chat.id)):
