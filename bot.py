@@ -1,13 +1,15 @@
 from threading import Lock
 from time import sleep
-from typing import Literal
+from typing import Iterator, Literal
+from math import trunc
 from origamibot import OrigamiBot as Bot
 from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
+from re import *
 
 BOT_TOKEN = "6703837324:AAELx1nu80hppsgprzDdSPHZXMCMm8WWcNw"
 CHAT_ID = 1323764255
-MSG_LIMIT = 50
+MSG_LIMIT = 60
 bot = Bot(BOT_TOKEN)
 tlock = Lock()
 
@@ -98,6 +100,12 @@ def sendMsg(chatID: int, message: str) -> Message:
 def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML"):
     return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode)
 
+def appendRemaining(str: str, c: str, maxLength: int) -> str:
+    for _ in range(maxLength-len(str)):
+        str += c
+    return str
+
+
 class Commands:
     rflag = False
     def __init__(self, bot: Bot):
@@ -155,9 +163,17 @@ class Commands:
     
     def showsvc(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            processOut = executeCommand("docker", ["ps", "--format", "{{.Names}} -> {{.Status}}"], "Unable to access docker containers")
-            if processOut.good:
-                sendMsg(message.chat.id, processOut.output)
+            filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
+            wordOffset = trunc(MSG_LIMIT/3)
+            serviceStatus: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Name", ' ', wordOffset) + appendRemaining("Status", ' ', wordOffset) + appendRemaining("Time", ' ', wordOffset) + '\n')
+            serviceStatus.create(message.chat.id)
+            for ctData in filteredCDatas:
+                for i in range(1,4):
+                    serviceStatus.append(appendRemaining(ctData.group(i), ' ', wordOffset))
+                serviceStatus.append('\n').send()
+                
+                
+
 
 bot.start()
 bot.add_commands(Commands(bot))
