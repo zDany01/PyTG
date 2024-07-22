@@ -1,5 +1,6 @@
 from threading import Lock
 from time import sleep
+from typing import Literal
 from origamibot import OrigamiBot as Bot
 from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
@@ -79,8 +80,17 @@ def getContainers(onlyActive: bool = False) -> list[str]:
         return
     return containerlistprc.output.splitlines()
 
-def getContainerData(CtID: str, filterString: str = None) -> str:
-    return executeCommand("docker", ["ps", "-a", "--filter", "id=" + CtID, "--format", filterString] if filterString is not None else ["ps", "-a", "--filter", "id=" + CtID], "Unable to get container data for CtID: " + CtID).output.strip()
+def getContainersData(Containers: Literal["ALL", "ACTIVE"] = "ACTIVE", formatString: str = "") -> str:
+        return executeCommand("docker", ["ps", "-a", "--format", formatString] if Containers == "ALL" else ["ps", "--format", formatString]).output
+
+def getContainerData(CtID: str, formatString: str = None) -> str:
+    return executeCommand("docker", ["ps", "-a", "--filter", "id=" + CtID, "--format", formatString] if formatString is not None else ["ps", "-a", "--filter", "id=" + CtID], "Unable to get container data for CtID: " + CtID).output.strip()
+
+def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str]:
+    dataList: list[str] = []
+    for CtID in CtIDs:
+        dataList.append(getContainerData(CtID, formatString))
+    return dataList
 
 def sendMsg(chatID: int, message: str) -> Message:
     return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
