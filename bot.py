@@ -1,5 +1,6 @@
 from threading import Lock
-from time import sleep
+from os.path import exists, getmtime
+from time import sleep, strftime, localtime
 from typing import Iterator, Literal
 from math import trunc
 from origamibot import OrigamiBot as Bot
@@ -172,7 +173,13 @@ class Commands:
                     serviceStatus.append(appendRemaining(ctData.group(i), ' ', wordOffset))
                 serviceStatus.append('\n').send()
                 
-                
+    def lastbackup(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            updatePath = "/home/danyb/iSSD/Backup/update"
+            if not exists(updatePath):
+                sendMsg(message.chat.id, "Unable to get last backup date\nMake sure that a backup has been done before")
+                return
+            sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(updatePath))))
 
 
 bot.start()
