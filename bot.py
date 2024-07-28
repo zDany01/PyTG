@@ -95,6 +95,23 @@ def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str
         dataList.append(getContainerData(CtID, formatString))
     return dataList
 
+def stopContainer(CtID: str, errormsg = "") -> int:
+    """
+    :param errormsg: this message will be displayed if there is an error when executing the stop command NOT if the container is already stopped
+    :return 0: if stopped correctly
+    :return 1: if already stopped
+    :return -1: if an error occured during stopping
+    """
+    if(getContainerData(CtID, "{{.Status}}").startswith("Exited")):
+        return 1
+    return 0 if executeCommand("docker", ["stop", CtID], errormsg).good else -1
+
+def stopContainers(CtIDs: list[str]) -> list[int]:
+    stopResults: list[int] = []
+    for CtID in CtIDs:
+        stopResults.append(stopContainer(CtID))
+    return stopResults
+
 def sendMsg(chatID: int, message: str) -> Message:
     return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
 
@@ -180,7 +197,6 @@ class Commands:
                 sendMsg(message.chat.id, "Unable to get last backup date\nMake sure that a backup has been done before")
                 return
             sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(updatePath))))
-
 
 bot.start()
 bot.add_commands(Commands(bot))
