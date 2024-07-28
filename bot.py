@@ -95,6 +95,26 @@ def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str
         dataList.append(getContainerData(CtID, formatString))
     return dataList
 
+def startContainer(CtID: str, startOnly: bool = True, errormsg: str = "") -> int:
+    """
+    :param errormsg: this message will be displayed if there is an error when executing the start/restart command NOT if the container is already started
+    :return 0: if started correctly
+    :return 1: if already started
+    :return 2: if restarted correctly
+    :return -1: if an error occured during starting/restarting
+    """
+    if(getContainerData(CtID, "{{.Status}}").startswith("Up")):
+        if (startOnly):
+            return 1
+        return 2 if executeCommand("docker", ["restart", CtID], errormsg).good else -1
+    return 0 if executeCommand("docker", ["start", CtID], errormsg).good else -1
+
+def startContainers(CtIDs: list[str], startOnly: bool = True) -> list[int]:
+    startResult: list[int] = []
+    for CtID in CtIDs:
+        startResult.append(startContainer(CtID, startOnly))
+    return startResult
+
 def stopContainer(CtID: str, errormsg = "") -> int:
     """
     :param errormsg: this message will be displayed if there is an error when executing the stop command NOT if the container is already stopped
