@@ -192,7 +192,7 @@ class Commands:
                 offset = ""
                 for _ in range(1, MSG_LIMIT - len(containerName)):
                     offset += ' '
-                if executeCommand("docker", ["restart", container], "Unable to restart" + container).good:
+                if startContainer(container, False, "Unable to restart" + container) == 2:
                     progressMessage.append(offset + "✅").send()
                     successNumber += 1
                 else:
