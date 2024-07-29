@@ -267,6 +267,16 @@ class Commands:
                 progressMessage.send()
             sendMsg(message.chat.id, "Stopped {0} of {1} containers ({2} were already inactive)".format(stoppedCount, len(containerlist), inactiveCount))
 
+    def uptime(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            commandResult: ProcessOutput = executeCommand("uptime", ["-p"], "Unable to get system uptime")
+            if commandResult.good:
+                regexFilter: Match[str] = match("up (?:(?P<Days>\d+) days, )?(?:(?P<Hours>\d+) hours, )?(?:(?P<Minutes>\d+) minutes)", commandResult.output)
+                days: int = regexFilter.group("Days")
+                hours: int = regexFilter.group("Hours")
+                minutes: int = regexFilter.group("Minutes")
+            sendMsg(message.chat.id, "The server is up by {0}{1}{2} minutes".format(days + "days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
+
 bot.start()
 bot.add_commands(Commands(bot))
 while True:
