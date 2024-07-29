@@ -232,7 +232,7 @@ class Commands:
                 for _ in range(1, MSG_LIMIT - len(containerName)):
                     offset += ' '
                 progressMessage.append(offset)
-                match startContainer(container, errormsg="Unable to restart" + container):
+                match startContainer(container, errormsg="Unable to start" + container):
                     case 0:
                         progressMessage.append('🆙')
                         startedCount += 1
@@ -243,6 +243,28 @@ class Commands:
                         progressMessage.append('❌')
                 progressMessage.send()
             sendMsg(message.chat.id, "Started {0} of {1} containers ({2} were already active)".format(startedCount, len(containerlist), activeCount))
+
+    def stopall(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            containerlist = getContainers()
+            progressMessage = CodeMessage("PyDocker", "Stopping all containers..")
+            progressMessage.create(message.chat.id)
+            stoppedCount = 0
+            inactiveCount = 0
+            for container in containerlist:
+                containerName: str = getContainerData(container, "{{.Names}}")
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', MSG_LIMIT)).send() # MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
+                match stopContainer(container, "Unable to stop" + container):
+                    case 0:
+                        progressMessage.append('⛔')
+                        stoppedCount += 1
+                    case 1:
+                        progressMessage.append('🔴')
+                        inactiveCount +=  1
+                    case -1:
+                        progressMessage.append('❌')
+                progressMessage.send()
+            sendMsg(message.chat.id, "Stopped {0} of {1} containers ({2} were already inactive)".format(stoppedCount, len(containerlist), inactiveCount))
 
 bot.start()
 bot.add_commands(Commands(bot))
