@@ -218,6 +218,32 @@ class Commands:
                 return
             sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(updatePath))))
 
+    def startall(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            containerlist = getContainers()
+            progressMessage = CodeMessage("PyDocker", "Starting all containers..")
+            progressMessage.create(message.chat.id)
+            startedCount = 0
+            activeCount = 0
+            for container in containerlist:
+                containerName: str = getContainerData(container, "{{.Names}}")
+                progressMessage.append('\n' + containerName).send()
+                offset = ""
+                for _ in range(1, MSG_LIMIT - len(containerName)):
+                    offset += ' '
+                progressMessage.append(offset)
+                match startContainer(container, errormsg="Unable to restart" + container):
+                    case 0:
+                        progressMessage.append('🆙')
+                        startedCount += 1
+                    case 1:
+                        progressMessage.append('🟢')
+                        activeCount +=  1
+                    case -1:
+                        progressMessage.append('❌')
+                progressMessage.send()
+            sendMsg(message.chat.id, "Started {0} of {1} containers ({2} were already active)".format(startedCount, len(containerlist), activeCount))
+
 bot.start()
 bot.add_commands(Commands(bot))
 while True:
