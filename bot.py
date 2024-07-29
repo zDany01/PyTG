@@ -183,21 +183,22 @@ class Commands:
     def redocker(self, message: Message):
         if(AuthCheck(message.chat.id)):
             containerlist = getContainers(True)
-            progressMessage = CodeMessage("PyDocker", "Restarting active containers..")
+            if (len(containerlist) == 0):
+                sendMsg(message.chat.id, "There are no active containers to restart")
+                return
+            progressMessage = CodeMessage("PyDocker", "Restarting all containers..")
             progressMessage.create(message.chat.id)
-            successNumber = 0
+            restartedCount = 0
             for container in containerlist:
                 containerName: str = getContainerData(container, "{{.Names}}")
-                progressMessage.append('\n' + containerName).send()
-                offset = ""
-                for _ in range(1, MSG_LIMIT - len(containerName)):
-                    offset += ' '
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', MSG_LIMIT)).send()
                 if startContainer(container, False, "Unable to restart" + container) == 2:
-                    progressMessage.append(offset + "✅").send()
-                    successNumber += 1
+                        progressMessage.append('🔁')
+                        restartedCount += 1
                 else:
-                    progressMessage.append(offset + "❌").send()
-            sendMsg(message.chat.id, "Restarted {0} of {1} active containers".format(successNumber, len(containerlist)))
+                        progressMessage.append('❌')
+                progressMessage.send()
+            sendMsg(message.chat.id, "Restarted {0} of {1} containers".format(restartedCount, len(containerlist)))
     
     def showsvc(self, message: Message):
         if(AuthCheck(message.chat.id)):
