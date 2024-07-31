@@ -163,8 +163,34 @@ def createDockerSelectMenu(chatID: int | None, CtIDs: list[str], callbackSfx: st
                 return editMsg(messageHolder, "Select a docker container", replyMarkup=InlineKeyboardMarkup(messageMenu))
 
 class CallbackAction:
+    #CallBack -> Action
+    # exit -> closes the docker selection menu
+    # docker-[ID] -> create a container managment menu for that container ID
+    # reopen -> recreate a docker selection menu
+    # dstart-[ID] -> start a docker container
+    # dstop-[ID] -> stop a docker container
+    # drestart-[ID] -> restart a docker container
+
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("dstart-"))
+    def dstart(self, cbQuery: CallbackQuery):
+        CtID: str = cbQuery.data.replace("dstart-", "")
+        bot.answer_callback_query(cbQuery.id, "Container started succesfully" if startContainer(CtID) == 0 else "Unable to start this container")
+        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("dstop-"))
+    def dstop(self, cbQuery: CallbackQuery):
+        CtID: str = cbQuery.data.replace("dstop-", "")
+        bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if stopContainer(CtID) == 0 else "Unable to stop this container")
+        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("drestart-"))
+    def drestart(self, cbQuery: CallbackQuery):
+        CtID: str = cbQuery.data.replace("drestart-", "")
+        bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if startContainer(CtID, False) == 2 else "Unable to restart this container")
+        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data == "exit")
     def closeMenu(self, cbQuery: CallbackQuery):
@@ -173,8 +199,8 @@ class CallbackAction:
             editMsg(menuMessage, "Menu closed")
         bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("docker-"))
-    def createMenu(self, cbQuery: CallbackQuery):
+    @condition(lambda c, cbQuery, updateOnly=False: cbQuery.data.startswith("docker-") or updateOnly)
+    def createMenu(self, cbQuery: CallbackQuery, updateOnly: bool | None = False):
         menuMessage: Message = cbQuery.message
         if(AuthCheck(menuMessage.chat.id)):
             container = cbQuery.data.replace("docker-", "")
@@ -196,12 +222,15 @@ class CallbackAction:
                 buttons.append([InlineKeyboardButton("Backup", callback_data=f"dbak-{container}")])
                 buttons.append([InlineKeyboardButton("Back", callback_data="reopen")])
 
-                editMsg(menuMessage, f"<b>{ctName.capitalize()}</b>\nStatus: <b>{ctStatus}</b>" + (f"\nRunning for {ctUpTime}" if ctRunning else f" ({ctUpTime})") + f"\nLast Updated: {ctLastUpd}\nImage Size: {ctSize}", replyMarkup=InlineKeyboardMarkup(buttons))
+                editMsg(menuMessage, f"<b>{ctName.capitalize()}</b>\nStatus: <b>{ctStatus}</b>" + (f"\nRunning for {ctUpTime.lower()}" if ctRunning else f" ({ctUpTime})") + f"\nLast Updated: {ctLastUpd}\nImage Size: {ctSize}", replyMarkup=InlineKeyboardMarkup(buttons))
+                if(updateOnly):
+                    return
                 bot.answer_callback_query(cbQuery.id)
             else:
                 print("Requested query on non-existent container - " + container)
+                if (updateOnly):
+                    return
                 bot.answer_callback_query(cbQuery.id, "The selected container does not exist")
-                return
             
     @condition(lambda c, cbQuery: cbQuery.data == "reopen")
     def reOpenMenu(self, cbQuery: CallbackQuery):
