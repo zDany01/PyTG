@@ -1,5 +1,6 @@
 from threading import Lock
 from os.path import exists, getmtime
+from io import StringIO
 from time import sleep, strftime, strptime, localtime
 from typing import Iterator, Literal
 from math import trunc
@@ -170,6 +171,7 @@ class CallbackAction:
     # dstart-[ID] -> start a docker container
     # dstop-[ID] -> stop a docker container
     # drestart-[ID] -> restart a docker container
+    # dlog-[ID] -> get last execution log of a docker container
 
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
@@ -191,6 +193,22 @@ class CallbackAction:
         CtID: str = cbQuery.data.replace("drestart-", "")
         bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if startContainer(CtID, False) == 2 else "Unable to restart this container")
         self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("dlog-"))
+    def dlog(self, cbQuery: CallbackQuery):
+        CtID: str = cbQuery.data.replace("dlog-", "")
+        logCommand = executeCommand("docker", ["logs", CtID])
+        if(not logCommand.good):
+            bot.answer_callback_query(cbQuery.id, "Unable to get container logs")
+            return
+        virtualFile: StringIO = StringIO()
+        virtualFile.name = f'{getContainerData(CtID, "{{.Names}}")} ({strftime("%b %-d %Y %H-%M-%S", localtime())}).log'
+        virtualFile.write(logCommand.output)
+        virtualFile.flush()
+        virtualFile.seek(0)
+        bot.send_document(cbQuery.message.chat.id, virtualFile)
+        virtualFile.close()
+        bot.answer_callback_query(cbQuery.id)
 
     @condition(lambda c, cbQuery: cbQuery.data == "exit")
     def closeMenu(self, cbQuery: CallbackQuery):
@@ -219,7 +237,7 @@ class CallbackAction:
                     buttons.append([InlineKeyboardButton("Restart", callback_data=f"drestart-{container}")])
                 else:
                     buttons.append([InlineKeyboardButton("Start", callback_data=f"dstart-{container}")])
-                buttons.append([InlineKeyboardButton("Backup", callback_data=f"dbak-{container}")])
+                buttons.append([InlineKeyboardButton("Logs", callback_data=f"dlog-{container}")])
                 buttons.append([InlineKeyboardButton("Back", callback_data="reopen")])
 
                 editMsg(menuMessage, f"<b>{ctName.capitalize()}</b>\nStatus: <b>{ctStatus}</b>" + (f"\nRunning for {ctUpTime.lower()}" if ctRunning else f" ({ctUpTime})") + f"\nLast Updated: {ctLastUpd}\nImage Size: {ctSize}", replyMarkup=InlineKeyboardMarkup(buttons))
