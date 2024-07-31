@@ -178,37 +178,45 @@ class CallbackAction:
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("dstart-"))
     def dstart(self, cbQuery: CallbackQuery):
-        CtID: str = cbQuery.data.replace("dstart-", "")
-        bot.answer_callback_query(cbQuery.id, "Container started succesfully" if startContainer(CtID) == 0 else "Unable to start this container")
-        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+        queryMsg = cbQuery.message
+        if(AuthCheck(queryMsg.chat.id)):
+            CtID: str = cbQuery.data.replace("dstart-", "")
+            bot.answer_callback_query(cbQuery.id, "Container started succesfully" if startContainer(CtID) == 0 else "Unable to start this container")
+            self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("dstop-"))
     def dstop(self, cbQuery: CallbackQuery):
-        CtID: str = cbQuery.data.replace("dstop-", "")
-        bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if stopContainer(CtID) == 0 else "Unable to stop this container")
-        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+        queryMsg = cbQuery.message
+        if(AuthCheck(queryMsg.chat.id)):
+            CtID: str = cbQuery.data.replace("dstop-", "")
+            bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if stopContainer(CtID) == 0 else "Unable to stop this container")
+            self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("drestart-"))
     def drestart(self, cbQuery: CallbackQuery):
-        CtID: str = cbQuery.data.replace("drestart-", "")
-        bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if startContainer(CtID, False) == 2 else "Unable to restart this container")
-        self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, cbQuery.message, cbQuery.inline_message_id, "docker-" + CtID), True)
+        queryMsg = cbQuery.message
+        if(AuthCheck(queryMsg.chat.id)):
+            CtID: str = cbQuery.data.replace("drestart-", "")
+            bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if startContainer(CtID, False) == 2 else "Unable to restart this container")
+            self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("dlog-"))
     def dlog(self, cbQuery: CallbackQuery):
-        CtID: str = cbQuery.data.replace("dlog-", "")
-        logCommand = executeCommand("docker", ["logs", CtID])
-        if(not logCommand.good):
-            bot.answer_callback_query(cbQuery.id, "Unable to get container logs")
-            return
-        virtualFile: StringIO = StringIO()
-        virtualFile.name = f'{getContainerData(CtID, "{{.Names}}")} ({strftime("%b %-d %Y %H-%M-%S", localtime())}).log'
-        virtualFile.write(logCommand.output)
-        virtualFile.flush()
-        virtualFile.seek(0)
-        bot.send_document(cbQuery.message.chat.id, virtualFile)
-        virtualFile.close()
-        bot.answer_callback_query(cbQuery.id)
+        chatID = cbQuery.message.chat.id
+        if(AuthCheck(chatID)):
+            CtID: str = cbQuery.data.replace("dlog-", "")
+            logCommand = executeCommand("docker", ["logs", CtID])
+            if(not logCommand.good):
+                bot.answer_callback_query(cbQuery.id, "Unable to get container logs")
+                return
+            virtualFile: StringIO = StringIO()
+            virtualFile.name = f'{getContainerData(CtID, "{{.Names}}")} ({strftime("%b %-d %Y %H-%M-%S", localtime())}).log'
+            virtualFile.write(logCommand.output)
+            virtualFile.flush()
+            virtualFile.seek(0)
+            bot.send_document(chatID, virtualFile)
+            virtualFile.close()
+            bot.answer_callback_query(cbQuery.id)
 
     @condition(lambda c, cbQuery: cbQuery.data == "exit")
     def closeMenu(self, cbQuery: CallbackQuery):
@@ -249,7 +257,7 @@ class CallbackAction:
                 if (updateOnly):
                     return
                 bot.answer_callback_query(cbQuery.id, "The selected container does not exist")
-            
+
     @condition(lambda c, cbQuery: cbQuery.data == "reopen")
     def reOpenMenu(self, cbQuery: CallbackQuery):
         menuMessage: Message = cbQuery.message
