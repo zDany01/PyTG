@@ -1,9 +1,10 @@
 from threading import Lock
 from os.path import exists, getmtime
-from time import sleep, strftime, localtime
+from time import sleep, strftime, strptime, localtime
 from typing import Iterator, Literal
 from math import trunc
 from origamibot import OrigamiBot as Bot
+from origamibot.util import condition
 from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
 from re import *
@@ -132,17 +133,82 @@ def stopContainers(CtIDs: list[str]) -> list[int]:
         stopResults.append(stopContainer(CtID))
     return stopResults
 
-def sendMsg(chatID: int, message: str) -> Message:
-    return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML")
+def sendMsg(chatID: int, message: str, replyMarkup: ReplyMarkup = None) -> Message:
+    return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML", reply_markup=replyMarkup)
 
-def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML"):
-    return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode)
+def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML", replyMarkup: ReplyMarkup | None = None):
+    return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode, reply_markup=replyMarkup)
 
 def appendRemaining(str: str, c: str, maxLength: int) -> str:
     for _ in range(maxLength-len(str)):
         str += c
     return str
 
+def createDockerSelectMenu(chatID: int | None, CtIDs: list[str], callbackSfx: str = "docker-", closingRow: list[InlineKeyboardButton] | None = None, messageHolder: Message | None = None) -> Message:
+            messageMenu: list[list[InlineKeyboardButton]] = []
+            containerNo = len(CtIDs)
+            rowOffset = trunc(containerNo/2)
+            for i in range(0, rowOffset):
+                messageMenu.append([InlineKeyboardButton(getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
+
+            if(rowOffset * 2 != containerNo):
+                messageMenu.append([InlineKeyboardButton(getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])]) #-1 obtain the last element of the list
+
+            if closingRow is not None:
+                messageMenu.append(closingRow)
+
+            if messageHolder is None:
+                return sendMsg(chatID, "Select a docker container", InlineKeyboardMarkup(messageMenu))
+            else:
+                return editMsg(messageHolder, "Select a docker container", replyMarkup=InlineKeyboardMarkup(messageMenu))
+
+class CallbackAction:
+    def logquery(self, cbQuery: CallbackQuery):
+        print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
+
+    @condition(lambda c, cbQuery: cbQuery.data == "exit")
+    def closeMenu(self, cbQuery: CallbackQuery):
+        menuMessage: Message = cbQuery.message
+        if(AuthCheck(menuMessage.chat.id)):
+            editMsg(menuMessage, "Menu closed")
+        bot.answer_callback_query(cbQuery.id)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("docker-"))
+    def createMenu(self, cbQuery: CallbackQuery):
+        menuMessage: Message = cbQuery.message
+        if(AuthCheck(menuMessage.chat.id)):
+            container = cbQuery.data.replace("docker-", "")
+            if(container in getContainers()):
+                ctData: str = match("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)\[\d+.?\w+ \(virtual (?P<Size>.+)\)\]\/(?P<UpdTime>.+)", getContainerData(container, "{{.Names}} -> {{.Status}}[{{.Size}}]/{{.CreatedAt}}"))
+                ctName: str = ctData.group("ContainerName")
+                ctStatus: str = ctData.group("ContainerStatus")
+                ctRunning: bool = ctStatus == "Up"
+                ctUpTime: str = ctData.group("Time")
+                ctSize: str = ctData.group("Size")
+                ctLastUpd = strftime("<i>%b %-d, %Y - %I:%M %p</i>", strptime(ctData.group("UpdTime"), "%Y-%m-%d %H:%M:%S %z %Z"))
+
+                buttons = []
+                if(ctRunning):
+                    buttons.append([InlineKeyboardButton("Stop", callback_data=f"dstop-{container}")])
+                    buttons.append([InlineKeyboardButton("Restart", callback_data=f"drestart-{container}")])
+                else:
+                    buttons.append([InlineKeyboardButton("Start", callback_data=f"dstart-{container}")])
+                buttons.append([InlineKeyboardButton("Backup", callback_data=f"dbak-{container}")])
+                buttons.append([InlineKeyboardButton("Back", callback_data="reopen")])
+
+                editMsg(menuMessage, f"<b>{ctName.capitalize()}</b>\nStatus: <b>{ctStatus}</b>" + (f"\nRunning for {ctUpTime}" if ctRunning else f" ({ctUpTime})") + f"\nLast Updated: {ctLastUpd}\nImage Size: {ctSize}", replyMarkup=InlineKeyboardMarkup(buttons))
+                bot.answer_callback_query(cbQuery.id)
+            else:
+                print("Requested query on non-existent container - " + container)
+                bot.answer_callback_query(cbQuery.id, "The selected container does not exist")
+                return
+            
+    @condition(lambda c, cbQuery: cbQuery.data == "reopen")
+    def reOpenMenu(self, cbQuery: CallbackQuery):
+        menuMessage: Message = cbQuery.message
+        if(AuthCheck(menuMessage.chat.id)):
+            createDockerSelectMenu(None, getContainers(), closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=menuMessage)
+            bot.answer_callback_query(cbQuery.id)
 
 class Commands:
     rflag = False
@@ -277,7 +343,13 @@ class Commands:
                 minutes: int = regexFilter.group("Minutes")
             sendMsg(message.chat.id, "The server is up by {0}{1}{2} minutes".format(days + "days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
 
+    def dockermenu(self, message: Message):
+        if(AuthCheck(message.chat.id)):
+            containerList = getContainers()
+            createDockerSelectMenu(message.chat.id, containerList, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
+
 bot.start()
 bot.add_commands(Commands(bot))
+bot.add_callback(CallbackAction())
 while True:
     sleep(1)
