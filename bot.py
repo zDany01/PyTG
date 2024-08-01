@@ -10,10 +10,8 @@ from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
 from re import *
 
-BOT_TOKEN = "6703837324:AAELx1nu80hppsgprzDdSPHZXMCMm8WWcNw"
-CHAT_ID = 1323764255
-MSG_LIMIT = 60
-bot = Bot(BOT_TOKEN)
+import config
+bot = Bot(config.BOT_TOKEN)
 tlock = Lock()
 
 class ProcessOutput:
@@ -41,7 +39,7 @@ class CodeMessage:
         self.message = ""
 
 def AuthCheck(chat_id: int) -> bool:
-    if(chat_id != CHAT_ID):
+    if(chat_id != config.CHAT_ID):
         bot.send_message(chat_id, "You are not authorized.")
         return False
     return True
@@ -69,7 +67,7 @@ def executeCommand(path: str, args = [], errormsg = "") -> ProcessOutput:
 
     if(exitcode != 0):
         if (errormsg != ""):
-            sendMsg(CHAT_ID, errormsg)
+            sendMsg(config.CHAT_ID, errormsg)
 
         print("Executing command: ",end='')
         for part in command:
@@ -286,11 +284,11 @@ class Commands:
 
     def backup(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            executeCommand("/home/danyb/iSSD/Backup/backup", ["--manual"], "Error during system backup")
+            executeCommand(config.BACKUP_SCRIPT_PATH, config.BACKUP_SCRIPT_ARGS, "Error during system backup")
                     
     def updatedb(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            executeCommand("/home/danyb/iSSD/AutoJobs/updateDB", errormsg= "Error while updating nginx IP database")
+            executeCommand(config.NGINX_DB_UPDATE_PATH, errormsg= "Error while updating nginx IP database")
 
     def restart(self, message: Message):
         if(AuthCheck(message.chat.id)):
@@ -311,7 +309,7 @@ class Commands:
             restartedCount = 0
             for container in containerlist:
                 containerName: str = getContainerData(container, "{{.Names}}")
-                progressMessage.append(appendRemaining('\n' + containerName, ' ', MSG_LIMIT)).send()
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT)).send()
                 if startContainer(container, False, "Unable to restart" + container) == 2:
                         progressMessage.append('🔁')
                         restartedCount += 1
@@ -323,7 +321,7 @@ class Commands:
     def showsvc(self, message: Message):
         if(AuthCheck(message.chat.id)):
             filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
-            wordOffset = trunc(MSG_LIMIT/3)
+            wordOffset = trunc(config.MSG_LIMIT/3)
             serviceStatus: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Name", ' ', wordOffset) + appendRemaining("Status", ' ', wordOffset) + appendRemaining("Time", ' ', wordOffset) + '\n')
             serviceStatus.create(message.chat.id)
             for ctData in filteredCDatas:
@@ -333,11 +331,10 @@ class Commands:
                 
     def lastbackup(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            updatePath = "/home/danyb/iSSD/Backup/update"
-            if not exists(updatePath):
+            if not exists(config.BACKUP_FLAG_PATH):
                 sendMsg(message.chat.id, "Unable to get last backup date\nMake sure that a backup has been done before")
                 return
-            sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(updatePath))))
+            sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(config.BACKUP_FLAG_PATH))))
 
     def startall(self, message: Message):
         if(AuthCheck(message.chat.id)):
@@ -350,7 +347,7 @@ class Commands:
                 containerName: str = getContainerData(container, "{{.Names}}")
                 progressMessage.append('\n' + containerName).send()
                 offset = ""
-                for _ in range(1, MSG_LIMIT - len(containerName)):
+                for _ in range(1, config.MSG_LIMIT - len(containerName)):
                     offset += ' '
                 progressMessage.append(offset)
                 match startContainer(container, errormsg="Unable to start" + container):
@@ -374,7 +371,7 @@ class Commands:
             inactiveCount = 0
             for container in containerlist:
                 containerName: str = getContainerData(container, "{{.Names}}")
-                progressMessage.append(appendRemaining('\n' + containerName, ' ', MSG_LIMIT)).send() # MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT)).send() # MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
                 match stopContainer(container, "Unable to stop" + container):
                     case 0:
                         progressMessage.append('⛔')
