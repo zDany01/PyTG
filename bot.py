@@ -265,8 +265,22 @@ class CallbackAction:
             createDockerSelectMenu(None, getContainers(), closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=menuMessage)
             bot.answer_callback_query(cbQuery.id)
 
+    @condition(lambda c, cbQuery: cbQuery.data == "ryes")
+    def ryes(self, cbQuery: CallbackQuery):
+        message: Message = cbQuery.message
+        if(AuthCheck(message.chat.id)):
+            bot.answer_callback_query(cbQuery.id, "Rebooting...")
+            editMsg(message, "System Rebooted")
+            executeCommand("reboot")
+
+    @condition(lambda c, cbQuery: cbQuery.data == "rno")
+    def rno(self, cbQuery:CallbackQuery):
+        message: Message = cbQuery.message
+        if(AuthCheck(message.chat.id)):
+            editMsg(message, "Operation aborted.")
+            bot.answer_callback_query(cbQuery.id)
+
 class Commands:
-    rflag = False
     def __init__(self, bot: Bot):
         self.bot = bot
 
@@ -280,22 +294,7 @@ class Commands:
 
     def restart(self, message: Message):
         if(AuthCheck(message.chat.id)):
-            if(self.rflag):
-                sendMsg(message.chat.id, "Rebooting system...")
-                self.rflag = False
-                executeCommand("reboot")
-            else:
-               sendMsg(message.chat.id, "Are you sure? /yes | /no")
-
-    def yes(self, message: Message):
-        if(AuthCheck(message.chat.id)):
-            self.rflag = True
-            self.restart(message)
-
-    def no(self, message: Message):
-        if(AuthCheck(message.chat.id)):
-            self.rflag = False
-            sendMsg(message.chat.id, "Operation aborted")
+            sendMsg(message.chat.id, "Do you want to reboot?", InlineKeyboardMarkup([[InlineKeyboardButton("Yes", callback_data="ryes"), InlineKeyboardButton("No", callback_data="rno")]]))
 
     def ping(self, message: Message):
         if(AuthCheck(message.chat.id)):
