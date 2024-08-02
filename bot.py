@@ -287,7 +287,7 @@ class Commands:
         if AuthCheck(message.chat.id):
             executeCommand(config.NGINX_DB_UPDATE_PATH, errormsg= "Error while updating nginx IP database")
 
-    def restart(self, message: Message):
+    def reboot(self, message: Message):
         if AuthCheck(message.chat.id):
             sendMsg(message.chat.id, "Do you want to reboot?", InlineKeyboardMarkup([[InlineKeyboardButton("Yes", callback_data="ryes"), InlineKeyboardButton("No", callback_data="rno")]]))
 
@@ -333,7 +333,7 @@ class Commands:
                 return
             sendMsg(message.chat.id, strftime("The latest backup was done on <i>%b %-d, %Y - %I:%M:%S %p</i>", localtime(getmtime(config.BACKUP_FLAG_PATH))))
 
-    def startall(self, message: Message):
+    def dockerstart(self, message: Message):
         if AuthCheck(message.chat.id):
             containerlist: list[str] = getContainers()
             progressMessage = CodeMessage("PyDocker", "Starting all containers..")
@@ -359,7 +359,7 @@ class Commands:
                 progressMessage.send()
             sendMsg(message.chat.id, "Started {0} of {1} containers ({2} were already active)".format(startedCount, len(containerlist), activeCount))
 
-    def stopall(self, message: Message):
+    def dockerstop(self, message: Message):
         if AuthCheck(message.chat.id):
             containerlist: list[str] = getContainers()
             progressMessage = CodeMessage("PyDocker", "Stopping all containers..")
@@ -389,7 +389,7 @@ class Commands:
                 days: int = regexFilter.group("Days")
                 hours: int = regexFilter.group("Hours")
                 minutes: int = regexFilter.group("Minutes")
-            sendMsg(message.chat.id, "The server is up by {0}{1}{2} minutes".format(days + "days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
+            sendMsg(message.chat.id, "The server is up by {0}{1}{2} minutes".format(days + " days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
 
     def dockermenu(self, message: Message):
         if AuthCheck(message.chat.id):
