@@ -337,6 +337,7 @@ class Commands:
             containerlist: list[str] = getContainers()
             progressMessage = CodeMessage("PyDocker", "Starting all containers..")
             progressMessage.create(message.chat.id)
+            containerNo: int = len(containerlist)
             startedCount: int = 0
             activeCount: int = 0
             for container in containerlist:
@@ -352,13 +353,23 @@ class Commands:
                     case -1:
                         progressMessage.append('❌')
                 progressMessage.send()
-            sendMsg(message.chat.id, "Started {0} of {1} containers ({2} were already active)".format(startedCount, len(containerlist), activeCount))
+
+            reply: str = ""
+            match [startedCount, activeCount]:
+                case [0, containerNo]:
+                    reply = "All containers were already active"
+                case [containerNo, 0]:
+                    reply = "All containers started"
+                case _:
+                    reply = f"Started {startedCount} of {containerNo} containers ({activeCount} were already active)"
+            sendMsg(message.chat.id, reply)
 
     def dockerstop(self, message: Message):
         if AuthCheck(message.chat.id):
             containerlist: list[str] = getContainers()
             progressMessage = CodeMessage("PyDocker", "Stopping all containers..")
             progressMessage.create(message.chat.id)
+            containerNo: int = len(containerlist)
             stoppedCount: int = 0
             inactiveCount: int = 0
             for container in containerlist:
@@ -374,7 +385,16 @@ class Commands:
                     case -1:
                         progressMessage.append('❌')
                 progressMessage.send()
-            sendMsg(message.chat.id, "Stopped {0} of {1} containers ({2} were already inactive)".format(stoppedCount, len(containerlist), inactiveCount))
+
+            reply: str = ""
+            match [stoppedCount, inactiveCount]:
+                case [0, containerNo]:
+                    reply = "All containers were already inactive"
+                case [containerNo, 0]:
+                    reply = "All containers stopped"
+                case _:
+                    reply = f"Started {stoppedCount} of {containerNo} containers ({inactiveCount} were already stopped)"
+            sendMsg(message.chat.id, reply)
 
     def uptime(self, message: Message):
         if AuthCheck(message.chat.id):
