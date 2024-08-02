@@ -276,8 +276,6 @@ class CallbackAction:
             bot.answer_callback_query(cbQuery.id)
 
 class Commands:
-    def __init__(self, bot: Bot):
-        self.bot = bot
 
     def backup(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -324,7 +322,8 @@ class Commands:
             for ctData in filteredCDatas:
                 for i in range(1,4):
                     serviceStatus.append(appendRemaining(ctData.group(i), ' ', wordOffset))
-                serviceStatus.append('\n').send()
+                serviceStatus.append('\n')
+            serviceStatus.send()
                 
     def lastbackup(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -342,11 +341,7 @@ class Commands:
             activeCount: int = 0
             for container in containerlist:
                 containerName: str = getContainerData(container, "{{.Names}}")
-                progressMessage.append('\n' + containerName).send()
-                offset: str = ""
-                for _ in range(1, config.MSG_LIMIT - len(containerName)):
-                    offset += ' '
-                progressMessage.append(offset)
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT - 10)).send()
                 match startContainer(container, errormsg="Unable to start" + container):
                     case 0:
                         progressMessage.append('🆙')
@@ -368,7 +363,7 @@ class Commands:
             inactiveCount: int = 0
             for container in containerlist:
                 containerName: str = getContainerData(container, "{{.Names}}")
-                progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT)).send() # MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
+                progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT - 10)).send() # Additional MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
                 match stopContainer(container, "Unable to stop" + container):
                     case 0:
                         progressMessage.append('⛔')
@@ -397,7 +392,7 @@ class Commands:
             createDockerSelectMenu(message.chat.id, containerList, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
 
 bot.start()
-bot.add_commands(Commands(bot))
+bot.add_commands(Commands())
 bot.add_callback(CallbackAction())
 while True:
     sleep(1)
