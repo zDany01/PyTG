@@ -424,18 +424,6 @@ class Commands:
                     diskInfo.append(appendRemaining(diskData.group(i), ' ', wordOffset))
                 diskInfo.append('\n')
 
-    def freespace(self, message: Message):
-        if(AuthCheck(message.chat.id)):
-           commandResult: ProcessOutput = executeCommand("df",["--type btrfs","--type vfat","--type iso9660","--type ext4","--type ext3","--type ext2", "-Th"],"Unable to obtain disk informations")
-           filteredDiskDatas: Iterator[Match[str]] = finditer("/\/dev\/(?P<DiskName>\w+) +(?P<Type>\w+) +(?P<TotSpace>\d+,?\.?\d+\w+?) +(?P<UseSpace>\d+,?\.?\d+\w+?) +(?P<RemSpace>\d+,?\.?\d+\w+?) +\d+% +(?P<Mount>.*)/gm", commandResult.output)
-           for diskData in filteredDiskDatas :
-            wordOffset: int = trunc(config.MSG_LIMIT/2)
-            diskInfo: CodeMessage = CodeMessage("PyDocker", appendRemaining("Disk Name", ' ', wordOffset) + appendRemaining("Disk Type", ' ', wordOffset) + appendRemaining("Tot. Space", ' ', wordOffset) + appendRemaining("Used Space", ' ', wordOffset) + appendRemaining("Free Space", ' ', wordOffset) + appendRemaining("Mount", ' ', wordOffset) + '\n')
-            diskInfo.create(message.chat.id)
-            for diskData in filteredDiskDatas:
-                for i in range(1,3):
-                    diskInfo.append(appendRemaining(diskData.group(i), ' ', wordOffset))
-                diskInfo.append('\n')
                
 bot.start()
 bot.add_commands(Commands())
