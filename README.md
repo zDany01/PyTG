@@ -1,0 +1,81 @@
+# PyTG
+A Python telegram bot to manage remotely a server
+
+## Requirements
+This application requires some installed software before being used
+- Python
+  - python3
+  - python3-pip
+  - python3-virtualenv
+  - python3-wheel (optional)
+- Docker
+
+## Installation
+To install this bot as a system service you need to execute the `install` file.
+```bash
+sudo ./install
+```
+This will create a virtual environment in your folder in which the script will automatically install all the dependencies.
+
+If you want to uninstall the service you need to execute the `uninstall` script
+```bash
+sudo ./uninstall
+```
+
+If you just want to execute the software without installing it as a service you can create a virtual environment called TGBot and then install the requirements.txt file
+```bash
+virtualenv TGBot 
+source ./TGBot/bin/activate
+pip3 install -r requirements.txt
+```
+From here you can either start manually the python script by accessing first to the virtual environment every time or you can deactivate it and just use the `pystart` file
+> Remember to run the Python bot with privileges
+
+## Bot settings
+Before using the app you modify some settings in the `config.py` file
+
+| Parameter | Type     | Description                |
+| :-------- | :------- | :------------------------- |
+| `BOT_TOKEN` | `string` | **Required**. Telegram bot token (get one from [@BotFather](https://t.me/BotFather)) |
+| `CHAT_ID` | `int` | **Required**. Authorized chat ID that can use this bot|
+| `MSG_LIMIT` | `int` | **Required**. Row character limit, if unsure use 60 |
+| `BACKUP_SCRIPT_PATH` | `string` |  Path to your bash backup script |
+| `BACKUP_SCRIPT_ARGS` | `list[string]` |  Arguments for your backup script|
+| `BACKUP_FLAG_PATH` | `string` | Path for backup updated file |
+| `NGINX_DB_UPDATE_PATH` | `string` | Path to your nginx database update bash script |
+
+## Usage
+### Manual
+To start the bot manually use the `pystart` file
+```bash
+sudo ./pystart
+```
+### Service
+Service status
+```bash
+sudo systemctl status PyTG
+```
+Start the service
+```bash
+sudo systemctl start PyTG
+```
+Stop the service
+```bash
+sudo systemctl stop PyTG
+```
+Disable the service (stop and prevent it from running automatically)
+```bash
+sudo systemctl disable PyTG
+sudo systemctl stop PyTG
+```
+Enable the service
+```bash
+sudo systemctl enable PyTG
+sudo systemctl start PyTG
+```
+
+# Contributing
+See `CONTRIBUTING.md` for more information
+
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
