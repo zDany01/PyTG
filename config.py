@@ -9,8 +9,17 @@ MSG_LIMIT = 60
 # Script settings
 BACKUP_SCRIPT_PATH = ""
 BACKUP_SCRIPT_ARGS = [] #Ex [arg1, arg2, arg3]
-#This is the file that get updated when a backup script is executed
+#This is the file that gets updated when a backup script is executed
 # Default: <BackupScriptWorkingDirectory>/update
 # Change manually if different
 BACKUP_FLAG_PATH = BACKUP_SCRIPT_PATH[0:BACKUP_SCRIPT_PATH.rfind("/")] + "/update"
 NGINX_DB_UPDATE_PATH = ""
+
+# Heartbeat
+# These settings allow the bot to ping or fetch a URL to register it into a monitor service
+HEARTBEAT_ENABLED = False
+HEARTBEAT_URL = ""
+HEARTBEAT_INTERVAL = 50 #Time to wait (in seconds) before fetching again
+HEARTBEAT_MAX_RETRIES = 3 # The maximum number of attempts before disabling the heartbeat
+HEARTBEAT_LOG_SUCCESS = False # Logs the successful requests
+HEARTBEAT_FAIL_ON_ERROR = False #Closes the program if the heartbeat service is not reachable

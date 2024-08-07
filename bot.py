@@ -1,9 +1,11 @@
-from threading import Lock
+from threading import Lock, Timer
 from os.path import exists, getmtime
+from os import _exit as killProcess
 from io import StringIO
 from time import sleep, strftime, strptime, localtime
 from typing import Iterator, Literal
 from math import trunc
+import requests
 from origamibot import OrigamiBot as Bot
 from origamibot.util import condition
 from subprocess import Popen, PIPE
@@ -13,6 +15,23 @@ from re import *
 import config
 bot = Bot(config.BOT_TOKEN)
 tlock = Lock()
+
+def heartbeat(retries: int = 0):
+    if(retries > config.HEARTBEAT_MAX_RETRIES):
+        print("[HEARTBEAT] Reached max tries, disabling HEARTBEAT")
+        if(config.HEARTBEAT_FAIL_ON_ERROR):
+            print("[HEARTBEAT] Detected fail on error, closing now..")
+            killProcess(1)
+        return
+
+    try:
+        requests.head(config.HEARTBEAT_URL)
+        if(config.HEARTBEAT_LOG_SUCCESS):
+            print("[HEARTBEAT] Ok")
+        Timer(config.HEARTBEAT_INTERVAL, heartbeat).start()
+    except:
+        print("[HEARTBEAT] Unable to reach " + config.HEARTBEAT_URL)
+        Timer(config.HEARTBEAT_INTERVAL, heartbeat, [retries + 1]).start()
 
 class ProcessOutput:
     def __init__(self, exitcode: int, output: str):
@@ -410,6 +429,9 @@ class Commands:
         if AuthCheck(message.chat.id):
             containerList: list[str] = getContainers()
             createDockerSelectMenu(message.chat.id, containerList, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
+
+if(config.HEARTBEAT_ENABLED):
+    Timer(5, heartbeat).start()
 
 bot.start()
 bot.add_commands(Commands())
