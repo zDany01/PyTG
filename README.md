@@ -43,6 +43,12 @@ Before using the app you modify some settings in the `config.py` file
 | `BACKUP_SCRIPT_ARGS` | `list[string]` |  Arguments for your backup script|
 | `BACKUP_FLAG_PATH` | `string` | Path for backup updated file |
 | `NGINX_DB_UPDATE_PATH` | `string` | Path to your nginx database update bash script |
+| `HEARTBEAT_ENABLED` | `bool` | Enable or Disable the heartbeat service |
+| `HEARTBEAT_URL` | `string` | API URL to fetch |
+| `HEARTBEAT_INTERVAL` | `int` | Time to wait (in seconds) before fetching again |
+| `HEARTBEAT_MAX_RETRIES` | `int` | The maximum number of attempts before disabling the heartbeat service |
+| `HEARTBEAT_FAIL_ON_ERROR` | `bool` | Closes the program if the heartbeat service is not reachable |
+| `HEARTBEAT_LOG_SUCCESS` | `bool` | Logs the successful requests |
 
 ## Usage
 ### Manual
