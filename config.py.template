@@ -1,8 +1,8 @@
 # Bot Settings
-#Insert here your telegram bot token
+#Your telegram bot token
 BOT_TOKEN = ""
-#Authorized ChatID that can use this bot (Replace 0 with your chatID)
-CHAT_ID = 0
+#List of ChatIDs that are allowed use this bot
+ALLOWED_CHAT_IDS = [] #Ex [chatid1, chatid2, chatid(n)] or [chatid] for single user only
 #CodeMessage row character limit, if unsure use 60
 MSG_LIMIT = 60
 

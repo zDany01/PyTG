@@ -67,10 +67,10 @@ class CodeMessage:
         self.message = ""
 
 def AuthCheck(chat_id: int) -> bool:
-    if chat_id != config.CHAT_ID:
+    allowed = chat_id in config.ALLOWED_CHAT_IDS
+    if not allowed:
         bot.send_message(chat_id, "You are not authorized.")
-        return False
-    return True
+    return allowed
 
 def executeCommand(path: str, args: list[str | int | bool] = [], errormsg: str = "") -> ProcessOutput:
     tlock.acquire()
