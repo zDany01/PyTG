@@ -419,11 +419,12 @@ class Commands:
         if AuthCheck(message.chat.id):
             commandResult: ProcessOutput = executeCommand("uptime", ["-p"], "Unable to get system uptime")
             if commandResult.good:
-                regexFilter: Match[str] = match("up (?:(?P<Days>\d+) days, )?(?:(?P<Hours>\d+) hours, )?(?:(?P<Minutes>\d+) minutes)", commandResult.output)
+                regexFilter: Match[str] = match("up (?:(?P<Weeks>\d+) weeks?, )?(?:(?P<Days>\d+) days?, )?(?:(?P<Hours>\d+) hours?, )?(?:(?P<Minutes>\d+) minutes?)", commandResult.output)
+                weeks: int = regexFilter.group("Weeks")
                 days: int = regexFilter.group("Days")
                 hours: int = regexFilter.group("Hours")
                 minutes: int = regexFilter.group("Minutes")
-            sendMsg(message.chat.id, "The server is up by {0}{1}{2} minutes".format(days + " days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
+            sendMsg(message.chat.id, "The server is up by {0}{1}{2}{3} minutes".format(weeks + " weeks, " if weeks is not None else "", days + " days, " if days is not None else "", hours + " hours and " if hours is not None else "", minutes))
 
     def dockermenu(self, message: Message):
         if AuthCheck(message.chat.id):
