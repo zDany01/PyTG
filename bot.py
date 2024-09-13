@@ -436,6 +436,19 @@ class Commands:
             containerList: list[str] = getContainers()
             createDockerSelectMenu(message.chat.id, containerList, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
 
+    def cleanup(self, message: Message):
+        if (AuthCheck(message.chat.id)):
+            commandResult: ProcessOutput = executeCommand("docker", ["image", "prune", "-a", "-f"], "Unable to clean docker images")
+            if(commandResult.good):
+                filteredOutput: Match[str] = search("(?<=space: )(?P<Size>[\d.]+)(?P<Unit>\w+)", commandResult.output)
+                freedDSpace: float = round(float(filteredOutput.group("Size")), 2)
+                if(freedDSpace == 0):
+                    sendMsg(message.chat.id, "No dangling images found")
+                    return
+                sendMsg(message.chat.id, f"Cleaned up <b>{freedDSpace}{filteredOutput.group('Unit')}</b>")
+
+
+
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
 
