@@ -1,5 +1,5 @@
 from threading import Lock, Timer
-from os.path import exists, getmtime
+from os.path import exists, getmtime, dirname, abspath
 from os import _exit as killProcess
 from io import StringIO
 from time import sleep, strftime, strptime, localtime
@@ -12,7 +12,12 @@ from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
 from re import *
 
-import config
+try:
+    import config
+except:
+        print("You need to rename \"config.py.template\" to \"config.py\"" if exists(dirname(abspath(__file__)) + "/config.py.template") else "No configuration file found...\nExiting...")
+        exit(1)
+
 bot = Bot(config.BOT_TOKEN)
 tlock = Lock()
 

@@ -1,5 +1,5 @@
 # PyTG
-A Python telegram bot to manage remotely a server
+A Python telegram bot to manage a server remotely
 
 ## Requirements
 This application requires some installed software before being used
@@ -11,11 +11,11 @@ This application requires some installed software before being used
 - Docker
 
 ## Installation
-To install this bot as a system service you need to execute the `install` file.
+You need to execute the `install` file to install this bot as a system service.
 ```bash
 sudo ./install
 ```
-This will create a virtual environment in your folder in which the script will automatically install all the dependencies.
+This will create a virtual environment in your folder where the script will automatically install all the dependencies.
 
 If you want to uninstall the service you need to execute the `uninstall` script
 ```bash
@@ -32,7 +32,7 @@ From here you can either start manually the python script by accessing first to 
 > Remember to run the Python bot with privileges
 
 ## Bot settings
-Before using the app you modify some settings in the `config.py` file
+Before using the app you need to rename `config.py.template` to `config.py` and modify some settings in it:
 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
