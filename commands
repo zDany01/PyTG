@@ -1,0 +1,12 @@
+ping - check if the bot is alive
+backup - start a manual backup
+updatedb - update nginx ip database
+reboot - reboot the server
+dockerstart - start all docker containers
+redocker - restart all active docker containers
+dockerstop - stop all docker containers
+showsvc - show all active docker containers
+lastbackup - show the latest backup date
+uptime - show server uptime
+dockermenu - show containers management menu
+cleanup - delete unused and dangling docker images
