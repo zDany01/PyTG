@@ -10,3 +10,4 @@ lastbackup - show the latest backup date
 uptime - show server uptime
 dockermenu - show containers management menu
 cleanup - delete unused and dangling docker images
+diskinfo - show connected disk devices' data
