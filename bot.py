@@ -191,6 +191,7 @@ class CallbackAction:
     # dstop-[ID] -> stop a docker container
     # drestart-[ID] -> restart a docker container
     # dlog-[ID] -> get last execution log of a docker container
+    # disk-[N] -> obtain disk device data
 
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
@@ -297,6 +298,28 @@ class CallbackAction:
         message: Message = cbQuery.message
         if AuthCheck(message.chat.id):
             editMsg(message, "Operation aborted.")
+            bot.answer_callback_query(cbQuery.id)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("disk-"))
+    def diskInfo(self, cbQuery: CallbackQuery):
+        message: Message = cbQuery.message
+        if AuthCheck(message.chat.id):
+            diskNumber: int = int(cbQuery.data.replace("disk-", ""))
+            command: ProcessOutput = executeCommand("df",["--type", "btrfs", "--type", "ext4", "--type", "ext3", "--type", "ext2", "--type", "vfat", "--type", "iso9660", "--type", "ntfs", "-TH"])
+            if not command.good:
+                bot.answer_callback_query(cbQuery.id, "Unable to get disk data")
+                return
+            diskArray: list[tuple] = findall(r'\/dev\/(?P<DiskName>\w+) +(?P<Type>\w+) +(?P<TotSpace>\d+,?\.?\d+\w+?) +(?P<UsedSpace>\d+,?\.?\d+\w+?) +(?P<RemSpace>(?:\d+,?\.?\d+\w+? | 0)) +\d+% +(?P<Mount>.+)', command.output)
+            maxDiskNumber: int = len(diskArray) - 1
+            buttons = []
+            if diskNumber == 0:
+                buttons.append([InlineKeyboardButton("→",callback_data=f'disk-{diskNumber+1}')])
+            if 0 < diskNumber < maxDiskNumber:
+                buttons.append([InlineKeyboardButton("←",callback_data=f'disk-{diskNumber-1}'), InlineKeyboardButton("→",callback_data=f'disk-{diskNumber+1}')])
+            if diskNumber == maxDiskNumber:
+                buttons.append([InlineKeyboardButton("←",callback_data=f'disk-{diskNumber-1}')])
+            buttons.append([InlineKeyboardButton("Close",callback_data="exit")])
+            editMsg(message,f'<b><em>Disk {diskNumber}</em></b>\n├─ Name: <b>{diskArray[diskNumber][0]}</b>\n├─ File System: {diskArray[diskNumber][1]}\n├─ Mount: <code>{diskArray[diskNumber][5]}</code> \n├─ Total Space: {diskArray[diskNumber][2]}\n├─ Used Space: {diskArray[diskNumber][3]}\n└─ Remaining Space: {diskArray[diskNumber][4]}', replyMarkup=InlineKeyboardMarkup(buttons))
             bot.answer_callback_query(cbQuery.id)
 
 class Commands:
