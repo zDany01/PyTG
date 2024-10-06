@@ -307,7 +307,10 @@ class CallbackAction:
             diskNumber: int = int(cbQuery.data.replace("disk-", ""))
             command: ProcessOutput = executeCommand("df",["--type", "btrfs", "--type", "ext4", "--type", "ext3", "--type", "ext2", "--type", "vfat", "--type", "iso9660", "--type", "ntfs", "-TH"])
             if not command.good:
-                bot.answer_callback_query(cbQuery.id, "Unable to get disk data")
+                if cbQuery.id:
+                    bot.answer_callback_query(cbQuery.id, "Unable to get disk data")
+                else:
+                    sendMsg(message.chat.id, "Unable to get disk data")
                 return
             diskArray: list[tuple] = findall(r'\/dev\/(?P<DiskName>\w+) +(?P<Type>\w+) +(?P<TotSpace>\d+,?\.?\d+\w+?) +(?P<UsedSpace>\d+,?\.?\d+\w+?) +(?P<RemSpace>(?:\d+,?\.?\d+\w+? | 0)) +\d+% +(?P<Mount>.+)', command.output)
             maxDiskNumber: int = len(diskArray) - 1
@@ -320,7 +323,8 @@ class CallbackAction:
                 buttons.append([InlineKeyboardButton("←",callback_data=f'disk-{diskNumber-1}')])
             buttons.append([InlineKeyboardButton("Close",callback_data="exit")])
             editMsg(message,f'<b><em>Disk {diskNumber}</em></b>\n├─ Name: <b>{diskArray[diskNumber][0]}</b>\n├─ File System: {diskArray[diskNumber][1]}\n├─ Mount: <code>{diskArray[diskNumber][5]}</code> \n├─ Total Space: {diskArray[diskNumber][2]}\n├─ Used Space: {diskArray[diskNumber][3]}\n└─ Remaining Space: {diskArray[diskNumber][4]}', replyMarkup=InlineKeyboardMarkup(buttons))
-            bot.answer_callback_query(cbQuery.id)
+            if cbQuery.id:
+                bot.answer_callback_query(cbQuery.id)
 
 class Commands:
 
@@ -470,7 +474,10 @@ class Commands:
                     return
                 sendMsg(message.chat.id, f"Cleaned up <b>{freedDSpace}{filteredOutput.group('Unit')}</b>")
 
-
+    def diskinfo(self, message: Message):
+        if AuthCheck(message.chat.id):
+            reply: Message = sendMsg(message.chat.id, "Obtaining data...")
+            CallbackAction.diskInfo(None, CallbackQuery(None, reply.from_user, str(reply.chat), reply, data="disk-0"))
 
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
