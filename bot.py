@@ -510,7 +510,7 @@ class Commands:
             command = executeCommand("w",["-h","-i"],"Unable to get connected users")
             if not command.good:
                 return
-            connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
+            connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d+\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
             if len(connectedUsers) == 0:
                 sendMsg(message.chat.id, "There are currently no users connected to the server")
                 return
