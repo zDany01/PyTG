@@ -196,6 +196,7 @@ class CallbackAction:
     # drestart-[ID] -> restart a docker container
     # dlog-[ID] -> get last execution log of a docker container
     # disk-[N] -> obtain disk device data
+    # dport-[ID] -> show currently published port of a docker container
 
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
@@ -267,6 +268,7 @@ class CallbackAction:
                 if ctRunning:
                     buttons.append([InlineKeyboardButton("Stop", callback_data=f"dstop-{CtID}")])
                     buttons.append([InlineKeyboardButton("Restart", callback_data=f"drestart-{CtID}")])
+                    buttons.append([InlineKeyboardButton("Ports", callback_data=f"dport-{CtID}")])
                 else:
                     buttons.append([InlineKeyboardButton("Start", callback_data=f"dstart-{CtID}")])
                 buttons.append([InlineKeyboardButton("Logs", callback_data=f"dlog-{CtID}")])
@@ -329,6 +331,26 @@ class CallbackAction:
             editMsg(message,f'<b><em>Disk {diskNumber}</em></b>\n├─ Name: <b>{diskArray[diskNumber][0]}</b>\n├─ File System: {diskArray[diskNumber][1]}\n├─ Mount: <code>{diskArray[diskNumber][5]}</code> \n├─ Total Space: {diskArray[diskNumber][2]}\n├─ Used Space: {diskArray[diskNumber][3]}\n└─ Remaining Space: {diskArray[diskNumber][4]}', replyMarkup=InlineKeyboardMarkup(buttons))
             if cbQuery.id:
                 bot.answer_callback_query(cbQuery.id)
+
+    @condition(lambda c, cbQuery: cbQuery.data.startswith("dport-"))
+    def dport(self, cbQuery: CallbackQuery):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
+            CtID: str = cbQuery.data.replace("dport-", "")
+            portCmd = executeCommand("docker", ["container", "port", CtID])
+            if not portCmd.good:
+                bot.answer_callback_query(cbQuery.id, "Unable to get this container ports")
+                return
+            elif(not portCmd.output or portCmd.output.isspace()):
+                bot.answer_callback_query(cbQuery.id, "There are no active published ports")
+                return
+            wordOffset = trunc(config.MSG_LIMIT/3)
+            portMsg: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Port", ' ', wordOffset) + appendRemaining("Protocol", ' ', wordOffset) + appendRemaining("Host Port", ' ', wordOffset))
+            portMsg.bind(queryMsg)
+            for ctData in finditer("(?P<CtPort>\d+)\/(?P<Proto>\w+) -> (?:(?:[\d.]+)|(?:\[(?P<SckIP>[a-f\d:]+)\])):(?P<SckPort>\d+)", portCmd.output):
+                portMsg.append('\n' + appendRemaining(ctData.group("CtPort"), ' ', wordOffset) + appendRemaining("  " + ctData.group("Proto").upper(), ' ', wordOffset) + appendRemaining(ctData.group("SckPort"), ' ', wordOffset))
+            portMsg.send(InlineKeyboardMarkup([[InlineKeyboardButton("Back", callback_data=f"docker-{CtID}")]]))
+            bot.answer_callback_query(cbQuery.id)
 
 class Commands:
 
