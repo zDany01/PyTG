@@ -479,6 +479,21 @@ class Commands:
             reply: Message = sendMsg(message.chat.id, "Obtaining data...")
             CallbackAction.diskInfo(None, CallbackQuery(None, reply.from_user, str(reply.chat), reply, data="disk-0"))
 
+    def showusr(self,message: Message):
+        if AuthCheck(message.chat.id):
+            command = executeCommand("w",["-h","-i"],"Unable to get connected users")
+            if not command.good:
+                return
+            connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
+            wordOffset: int = trunc(config.MSG_LIMIT/3)
+            userMessage: CodeMessage = CodeMessage("PyBot",appendRemaining("User", ' ', wordOffset) + appendRemaining("IP Address", ' ', wordOffset) + appendRemaining("Login Time", ' ', wordOffset))
+            userMessage.create(message.chat.id)
+            for user in connectedUsers:
+                userMessage.append('\n')
+                for group in range(0,3):
+                    userMessage.append(appendRemaining(user[group], ' ', wordOffset))
+                userMessage.send()
+
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
 
