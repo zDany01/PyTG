@@ -485,6 +485,9 @@ class Commands:
             if not command.good:
                 return
             connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
+            if len(connectedUsers) == 0:
+                sendMsg(message.chat.id, "There are currently no users connected to the server")
+                return
             wordOffset: int = trunc(config.MSG_LIMIT/3)
             userMessage: CodeMessage = CodeMessage("PyBot",appendRemaining("User", ' ', wordOffset) + appendRemaining("IP Address", ' ', wordOffset) + appendRemaining("Login Time", ' ', wordOffset))
             userMessage.create(message.chat.id)
@@ -492,7 +495,7 @@ class Commands:
                 userMessage.append('\n')
                 for group in range(0,3):
                     userMessage.append(appendRemaining(user[group], ' ', wordOffset))
-                userMessage.send()
+            userMessage.send()
 
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
