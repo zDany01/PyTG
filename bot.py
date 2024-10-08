@@ -198,7 +198,7 @@ class CallbackAction:
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
             editMsg(menuMessage, "Menu closed")
-        bot.answer_callback_query(cbQuery.id)
+            bot.answer_callback_query(cbQuery.id)
 
     @condition(lambda c, cbQuery, updateOnly=False: cbQuery.data.startswith("docker-") or updateOnly)
     def createMenu(self, cbQuery: CallbackQuery, updateOnly: bool | None = False):
