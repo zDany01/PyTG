@@ -1,7 +1,7 @@
+from math import trunc
 from typing import Literal
-
-executeCommand = None
-ProcessOutput = None
+from origamibot.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from botutils import ProcessOutput, executeCommand, sendMsg, editMsg
 
 class DockerManager:
     def __init__(self, chatID: int):
@@ -59,3 +59,24 @@ class DockerManager:
         for CtID in CtIDs:
             stopResults.append(self.stopContainer(CtID))
         return stopResults
+
+
+def createDockerSelectMenu(chatID: int | None, CtIDs: list[str], callbackSfx: str = "docker-", closingRow: list[InlineKeyboardButton] | None = None, messageHolder: Message | None = None) -> Message:
+    messageMenu: list[list[InlineKeyboardButton]] = []
+    containerNo: int = len(CtIDs)
+    rowOffset: int = trunc(containerNo/2)
+
+    docker: DockerManager = DockerManager(chatID)
+    for i in range(0, rowOffset):
+        messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(docker.getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
+
+    if rowOffset * 2 != containerNo:
+        messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])])  # -1 obtain the last element of the list
+
+    if closingRow is not None:
+        messageMenu.append(closingRow)
+
+    if messageHolder is None:
+        return sendMsg(chatID, "Select a docker container", InlineKeyboardMarkup(messageMenu))
+    else:
+        return editMsg(messageHolder, "Select a docker container", replyMarkup=InlineKeyboardMarkup(messageMenu))

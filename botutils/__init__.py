@@ -1,1 +1,0 @@
-from .docker_manager import DockerManager as DockerChatInstance
