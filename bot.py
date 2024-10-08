@@ -217,12 +217,11 @@ class CallbackAction:
 
                 buttons = []
                 if ctRunning:
-                    buttons.append([InlineKeyboardButton("Stop", callback_data=f"dstop-{CtID}")])
-                    buttons.append([InlineKeyboardButton("Restart", callback_data=f"drestart-{CtID}")])
-                    buttons.append([InlineKeyboardButton("Ports", callback_data=f"dport-{CtID}")])
+                    buttons.append([InlineKeyboardButton("Stop", callback_data=f"dstop-{CtID}"), InlineKeyboardButton("Restart", callback_data=f"drestart-{CtID}")])
+                    buttons.append([InlineKeyboardButton("Ports", callback_data=f"dport-{CtID}"), InlineKeyboardButton("Logs", callback_data=f"dlog-{CtID}")])
                 else:
                     buttons.append([InlineKeyboardButton("Start", callback_data=f"dstart-{CtID}")])
-                buttons.append([InlineKeyboardButton("Logs", callback_data=f"dlog-{CtID}")])
+                    buttons.append([InlineKeyboardButton("Logs", callback_data=f"dlog-{CtID}")])
                 buttons.append([InlineKeyboardButton("Back", callback_data="reopen")])
 
                 editMsg(menuMessage, f"<b>{ctName.capitalize()}</b>\nStatus: <b>{ctStatus}</b>" + (f"\nRunning for {ctUpTime.lower()}" if ctRunning else f" ({ctUpTime})") + f"\nLast Updated: {ctLastUpd}\nImage Size: {ctSize}", replyMarkup=InlineKeyboardMarkup(buttons))
