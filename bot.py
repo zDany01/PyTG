@@ -16,23 +16,23 @@ from botutils import DockerChatInstance, docker_manager
 try:
     import config
 except:
-        print("You need to rename \"config.py.template\" to \"config.py\"" if exists(dirname(abspath(__file__)) + "/config.py.template") else "No configuration file found...\nExiting...")
-        exit(1)
+    print("You need to rename \"config.py.template\" to \"config.py\"" if exists(dirname(abspath(__file__)) + "/config.py.template") else "No configuration file found...\nExiting...")
+    exit(1)
 
 bot = Bot(config.BOT_TOKEN)
 tlock = Lock()
 
 def heartbeat(retries: int = 0):
-    if(retries > config.HEARTBEAT_MAX_RETRIES):
+    if retries > config.HEARTBEAT_MAX_RETRIES:
         print("[HEARTBEAT] Reached max tries, disabling HEARTBEAT")
-        if(config.HEARTBEAT_FAIL_ON_ERROR):
+        if config.HEARTBEAT_FAIL_ON_ERROR:
             print("[HEARTBEAT] Detected fail on error, closing now..")
             killProcess(1)
         return
 
     try:
         requests.head(config.HEARTBEAT_URL)
-        if(config.HEARTBEAT_LOG_SUCCESS):
+        if config.HEARTBEAT_LOG_SUCCESS:
             print("[HEARTBEAT] Ok")
         Timer(config.HEARTBEAT_INTERVAL, heartbeat).start()
     except:
@@ -68,7 +68,7 @@ class CodeMessage:
         self.message = ""
 
 def AuthCheck(chat_id: int) -> bool:
-    allowed = chat_id in config.ALLOWED_CHAT_IDS
+    allowed: bool = chat_id in config.ALLOWED_CHAT_IDS
     if not allowed:
         bot.send_message(chat_id, "You are not authorized.")
     return allowed
@@ -79,7 +79,7 @@ def executeCommand(path: str, args: list[str | int | bool] = [], chatID: int | N
     command.append(path)
     for arg in args:
         command.append(arg)
-    print("Executing " + path + " with args: " + " ".join(args))
+    print(f"Executing {path} with args: {"".join(args)}")
 
     try:
         global exitcode
@@ -97,10 +97,10 @@ def executeCommand(path: str, args: list[str | int | bool] = [], chatID: int | N
         if errormsg and chatID:
             sendMsg(chatID, errormsg)
 
-        print("Executing command: ",end='')
+        print("Executing command: ", end='')
         for part in command:
             print('|' + part + '|', end=' ')
-        print()       
+        print()
         print("Generated this error:" + output.decode("utf-8"))
         return ProcessOutput(exitcode, output.decode("utf-8"))
     return ProcessOutput(exitcode, output.decode("utf-8"))
@@ -108,7 +108,7 @@ def executeCommand(path: str, args: list[str | int | bool] = [], chatID: int | N
 def sendMsg(chatID: int, message: str, replyMarkup: ReplyMarkup = None) -> Message:
     return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML", reply_markup=replyMarkup)
 
-def editMsg(message: Message, content: str, append: bool = False, parsemode = "HTML", replyMarkup: ReplyMarkup | None = None) -> Message:
+def editMsg(message: Message, content: str, append: bool = False, parsemode: str = "HTML", replyMarkup: ReplyMarkup | None = None) -> Message:
     return bot.edit_message_text(message.chat.id, message.text + content if append else "<b>PyBot</b>\n" + content, message.message_id, parse_mode=parsemode, reply_markup=replyMarkup)
 
 def appendRemaining(str: str, c: str, maxLength: int) -> str:
@@ -116,28 +116,29 @@ def appendRemaining(str: str, c: str, maxLength: int) -> str:
         str += c
     return str
 
+
 def createDockerSelectMenu(chatID: int | None, CtIDs: list[str], callbackSfx: str = "docker-", closingRow: list[InlineKeyboardButton] | None = None, messageHolder: Message | None = None) -> Message:
-            messageMenu: list[list[InlineKeyboardButton]] = []
-            containerNo: int = len(CtIDs)
-            rowOffset: int = trunc(containerNo/2)
+    messageMenu: list[list[InlineKeyboardButton]] = []
+    containerNo: int = len(CtIDs)
+    rowOffset: int = trunc(containerNo/2)
 
-            docker: DockerChatInstance = DockerChatInstance(chatID)
-            for i in range(0, rowOffset):
-                messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(docker.getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
+    docker: DockerChatInstance = DockerChatInstance(chatID)
+    for i in range(0, rowOffset):
+        messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(docker.getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
 
-            if rowOffset * 2 != containerNo:
-                messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])]) #-1 obtain the last element of the list
+    if rowOffset * 2 != containerNo:
+        messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])])  # -1 obtain the last element of the list
 
-            if closingRow is not None:
-                messageMenu.append(closingRow)
+    if closingRow is not None:
+        messageMenu.append(closingRow)
 
-            if messageHolder is None:
-                return sendMsg(chatID, "Select a docker container", InlineKeyboardMarkup(messageMenu))
-            else:
-                return editMsg(messageHolder, "Select a docker container", replyMarkup=InlineKeyboardMarkup(messageMenu))
+    if messageHolder is None:
+        return sendMsg(chatID, "Select a docker container", InlineKeyboardMarkup(messageMenu))
+    else:
+        return editMsg(messageHolder, "Select a docker container", replyMarkup=InlineKeyboardMarkup(messageMenu))
 
 class CallbackAction:
-    #CallBack -> Action
+    # CallBack -> Action
     # exit -> closes the docker selection menu
     # docker-[ID] -> create a container managment menu for that container ID
     # reopen -> recreate a docker selection menu
@@ -151,7 +152,7 @@ class CallbackAction:
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("dstart-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("dstart-"))
     def dstart(self, cbQuery: CallbackQuery):
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
@@ -159,7 +160,7 @@ class CallbackAction:
             bot.answer_callback_query(cbQuery.id, "Container started succesfully" if DockerChatInstance(queryMsg.chat.id).startContainer(CtID) == 0 else "Unable to start this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("dstop-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("dstop-"))
     def dstop(self, cbQuery: CallbackQuery):
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
@@ -167,7 +168,7 @@ class CallbackAction:
             bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if DockerChatInstance(queryMsg.chat.id).stopContainer(CtID) == 0 else "Unable to stop this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("drestart-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("drestart-"))
     def drestart(self, cbQuery: CallbackQuery):
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
@@ -175,7 +176,7 @@ class CallbackAction:
             bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if DockerChatInstance(queryMsg.chat.id).startContainer(CtID, False) == 2 else "Unable to restart this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("dlog-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("dlog-"))
     def dlog(self, cbQuery: CallbackQuery):
         chatID: int = cbQuery.message.chat.id
         if AuthCheck(chatID):
@@ -193,14 +194,14 @@ class CallbackAction:
             virtualFile.close()
             bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery: cbQuery.data == "exit")
+    @condition(lambda _, cbQuery: cbQuery.data == "exit")
     def closeMenu(self, cbQuery: CallbackQuery):
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
             editMsg(menuMessage, "Menu closed")
             bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery, updateOnly=False: cbQuery.data.startswith("docker-") or updateOnly)
+    @condition(lambda _, cbQuery, updateOnly=False: cbQuery.data.startswith("docker-") or updateOnly)
     def createMenu(self, cbQuery: CallbackQuery, updateOnly: bool | None = False):
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
@@ -213,7 +214,7 @@ class CallbackAction:
                 ctRunning: bool = ctStatus == "Up"
                 ctUpTime: str = ctData.group("Time")
                 ctSize: str = ctData.group("Size")
-                ctLastUpd = strftime("<i>%b %-d, %Y - %I:%M %p</i>", strptime(ctData.group("UpdTime"), "%Y-%m-%d %H:%M:%S %z %Z"))
+                ctLastUpd: str = strftime("<i>%b %-d, %Y - %I:%M %p</i>", strptime(ctData.group("UpdTime"), "%Y-%m-%d %H:%M:%S %z %Z"))
 
                 buttons = []
                 if ctRunning:
@@ -234,64 +235,64 @@ class CallbackAction:
                     return
                 bot.answer_callback_query(cbQuery.id, "The selected container does not exist")
 
-    @condition(lambda c, cbQuery: cbQuery.data == "reopen")
+    @condition(lambda _, cbQuery: cbQuery.data == "reopen")
     def reOpenMenu(self, cbQuery: CallbackQuery):
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
             createDockerSelectMenu(None, DockerChatInstance(menuMessage.chat.id).getContainers(), closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=menuMessage)
             bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery: cbQuery.data == "ryes")
+    @condition(lambda _, cbQuery: cbQuery.data == "ryes")
     def ryes(self, cbQuery: CallbackQuery):
-        message: Message = cbQuery.message
-        if AuthCheck(message.chat.id):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
             bot.answer_callback_query(cbQuery.id, "Rebooting...")
-            editMsg(message, "System Rebooted")
+            editMsg(queryMsg, "System Rebooted")
             executeCommand("reboot")
 
-    @condition(lambda c, cbQuery: cbQuery.data == "rno")
-    def rno(self, cbQuery:CallbackQuery):
-        message: Message = cbQuery.message
-        if AuthCheck(message.chat.id):
-            editMsg(message, "Operation aborted.")
+    @condition(lambda _, cbQuery: cbQuery.data == "rno")
+    def rno(self, cbQuery: CallbackQuery):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
+            editMsg(queryMsg, "Operation aborted.")
             bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("disk-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("disk-"))
     def diskInfo(self, cbQuery: CallbackQuery):
-        message: Message = cbQuery.message
-        if AuthCheck(message.chat.id):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
             diskNumber: int = int(cbQuery.data.replace("disk-", ""))
-            command: ProcessOutput = executeCommand("df",["--type", "btrfs", "--type", "ext4", "--type", "ext3", "--type", "ext2", "--type", "vfat", "--type", "iso9660", "--type", "ntfs", "-TH"])
+            command: ProcessOutput = executeCommand("df", ["--type", "btrfs", "--type", "ext4", "--type", "ext3", "--type", "ext2", "--type", "vfat", "--type", "iso9660", "--type", "ntfs", "-TH"])
             if not command.good:
                 if cbQuery.id:
                     bot.answer_callback_query(cbQuery.id, "Unable to get disk data")
                 else:
-                    sendMsg(message.chat.id, "Unable to get disk data")
+                    sendMsg(queryMsg.chat.id, "Unable to get disk data")
                 return
             diskArray: list[tuple] = findall(r'\/dev\/(?P<DiskName>\w+) +(?P<Type>\w+) +(?P<TotSpace>\d+,?\.?\d+\w+?) +(?P<UsedSpace>\d+,?\.?\d+\w+?) +(?P<RemSpace>(?:\d+,?\.?\d+\w+? | 0)) +\d+% +(?P<Mount>.+)', command.output)
             maxDiskNumber: int = len(diskArray) - 1
             buttons = []
             if diskNumber == 0:
-                buttons.append([InlineKeyboardButton("→",callback_data=f'disk-{diskNumber+1}')])
+                buttons.append([InlineKeyboardButton("→", callback_data=f'disk-{diskNumber+1}')])
             if 0 < diskNumber < maxDiskNumber:
-                buttons.append([InlineKeyboardButton("←",callback_data=f'disk-{diskNumber-1}'), InlineKeyboardButton("→",callback_data=f'disk-{diskNumber+1}')])
+                buttons.append([InlineKeyboardButton("←", callback_data=f'disk-{diskNumber-1}'), InlineKeyboardButton("→", callback_data=f'disk-{diskNumber+1}')])
             if diskNumber == maxDiskNumber:
-                buttons.append([InlineKeyboardButton("←",callback_data=f'disk-{diskNumber-1}')])
-            buttons.append([InlineKeyboardButton("Close",callback_data="exit")])
-            editMsg(message,f'<b><em>Disk {diskNumber}</em></b>\n├─ Name: <b>{diskArray[diskNumber][0]}</b>\n├─ File System: {diskArray[diskNumber][1]}\n├─ Mount: <code>{diskArray[diskNumber][5]}</code> \n├─ Total Space: {diskArray[diskNumber][2]}\n├─ Used Space: {diskArray[diskNumber][3]}\n└─ Remaining Space: {diskArray[diskNumber][4]}', replyMarkup=InlineKeyboardMarkup(buttons))
+                buttons.append([InlineKeyboardButton("←", callback_data=f'disk-{diskNumber-1}')])
+            buttons.append([InlineKeyboardButton("Close", callback_data="exit")])
+            editMsg(queryMsg, f'<b><em>Disk {diskNumber}</em></b>\n├─ Name: <b>{diskArray[diskNumber][0]}</b>\n├─ File System: {diskArray[diskNumber][1]}\n├─ Mount: <code>{diskArray[diskNumber][5]}</code> \n├─ Total Space: {diskArray[diskNumber][2]}\n├─ Used Space: {diskArray[diskNumber][3]}\n└─ Remaining Space: {diskArray[diskNumber][4]}', replyMarkup=InlineKeyboardMarkup(buttons))
             if cbQuery.id:
                 bot.answer_callback_query(cbQuery.id)
 
-    @condition(lambda c, cbQuery: cbQuery.data.startswith("dport-"))
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("dport-"))
     def dport(self, cbQuery: CallbackQuery):
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
             CtID: str = cbQuery.data.replace("dport-", "")
-            portCmd = executeCommand("docker", ["container", "port", CtID])
+            portCmd: ProcessOutput = executeCommand("docker", ["container", "port", CtID])
             if not portCmd.good:
                 bot.answer_callback_query(cbQuery.id, "Unable to get this container ports")
                 return
-            elif(not portCmd.output or portCmd.output.isspace()):
+            elif not portCmd.output or portCmd.output.isspace():
                 bot.answer_callback_query(cbQuery.id, "There are no active published ports")
                 return
             wordOffset = trunc(config.MSG_LIMIT/3)
@@ -307,10 +308,10 @@ class Commands:
     def backup(self, message: Message):
         if AuthCheck(message.chat.id):
             executeCommand(config.BACKUP_SCRIPT_PATH, config.BACKUP_SCRIPT_ARGS, message.chat.id, "Error during system backup")
-                    
+
     def updatedb(self, message: Message):
         if AuthCheck(message.chat.id):
-            executeCommand(config.NGINX_DB_UPDATE_PATH, chatID=message.chat.id, errormsg= "Error while updating nginx IP database")
+            executeCommand(config.NGINX_DB_UPDATE_PATH, chatID=message.chat.id, errormsg="Error while updating nginx IP database")
 
     def reboot(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -334,24 +335,24 @@ class Commands:
                 containerName: str = docker.getContainerData(container, "{{.Names}}")
                 progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT)).send()
                 if docker.startContainer(container, False, "Unable to restart" + container) == 2:
-                        progressMessage.append('🔁')
-                        restartedCount += 1
+                    progressMessage.append('🔁')
+                    restartedCount += 1
                 else:
-                        progressMessage.append('❌')
+                    progressMessage.append('❌')
                 progressMessage.send()
             sendMsg(message.chat.id, "Restarted {0} of {1} containers".format(restartedCount, len(containerlist)))
-    
+
     def showsvc(self, message: Message):
         if AuthCheck(message.chat.id):
             filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", DockerChatInstance(message.chat.id).getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
             wordOffset: int = trunc(config.MSG_LIMIT/3)
             serviceStatus: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Name", ' ', wordOffset) + appendRemaining("Status", ' ', wordOffset) + appendRemaining("Time", ' ', wordOffset) + '\n')
             for ctData in filteredCDatas:
-                for i in range(1,4):
+                for i in range(1, 4):
                     serviceStatus.append(appendRemaining(ctData.group(i), ' ', wordOffset))
                 serviceStatus.append('\n')
             serviceStatus.create(message.chat.id)
-                
+
     def lastbackup(self, message: Message):
         if AuthCheck(message.chat.id):
             if not exists(config.BACKUP_FLAG_PATH):
@@ -377,7 +378,7 @@ class Commands:
                         startedCount += 1
                     case 1:
                         progressMessage.append('🟢')
-                        activeCount +=  1
+                        activeCount += 1
                     case -1:
                         progressMessage.append('❌')
                 progressMessage.send()
@@ -410,7 +411,7 @@ class Commands:
                         stoppedCount += 1
                     case 1:
                         progressMessage.append('🔴')
-                        inactiveCount +=  1
+                        inactiveCount += 1
                     case -1:
                         progressMessage.append('❌')
                 progressMessage.send()
@@ -444,10 +445,10 @@ class Commands:
     def cleanup(self, message: Message):
         if (AuthCheck(message.chat.id)):
             commandResult: ProcessOutput = executeCommand("docker", ["image", "prune", "-a", "-f"], message.chat.id, "Unable to clean docker images")
-            if(commandResult.good):
+            if commandResult.good:
                 filteredOutput: Match[str] = search("(?<=space: )(?P<Size>[\d.]+)(?P<Unit>\w+)", commandResult.output)
                 freedDSpace: float = round(float(filteredOutput.group("Size")), 2)
-                if(freedDSpace == 0):
+                if freedDSpace == 0:
                     sendMsg(message.chat.id, "No dangling images found")
                     return
                 sendMsg(message.chat.id, f"Cleaned up <b>{freedDSpace}{filteredOutput.group('Unit')}</b>")
@@ -457,28 +458,29 @@ class Commands:
             reply: Message = sendMsg(message.chat.id, "Obtaining data...")
             CallbackAction.diskInfo(None, CallbackQuery(None, reply.from_user, str(reply.chat), reply, data="disk-0"))
 
-    def showusr(self,message: Message):
+    def showusr(self, message: Message):
         if AuthCheck(message.chat.id):
-            command = executeCommand("w",["-h","-i"], message.chat.id, "Unable to get connected users")
+            command: ProcessOutput = executeCommand("w", ["-h", "-i"], message.chat.id, "Unable to get connected users")
             if not command.good:
                 return
-            connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d+\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
+            connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d+\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+', command.output)
             if len(connectedUsers) == 0:
                 sendMsg(message.chat.id, "There are currently no users connected to the server")
                 return
             wordOffset: int = trunc(config.MSG_LIMIT/3)
-            userMessage: CodeMessage = CodeMessage("PyBot",appendRemaining("User", ' ', wordOffset) + appendRemaining("IP Address", ' ', wordOffset) + appendRemaining("Login Time", ' ', wordOffset))
-  
+            userMessage: CodeMessage = CodeMessage("PyBot", appendRemaining("User", ' ', wordOffset) + appendRemaining("IP Address", ' ', wordOffset) + appendRemaining("Login Time", ' ', wordOffset))
+
             for user in connectedUsers:
                 userMessage.append('\n')
-                for group in range(0,3):
+                for group in range(0, 3):
                     userMessage.append(appendRemaining(user[group], ' ', wordOffset))
             userMessage.create(message.chat.id)
 
-if(config.HEARTBEAT_ENABLED):
+
+if (config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
 
-#TODO: Refactor and remove this abomination
+# TODO: Refactor and remove this abomination
 docker_manager.executeCommand = executeCommand
 docker_manager.ProcessOutput = ProcessOutput
 
