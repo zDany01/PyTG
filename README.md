@@ -37,7 +37,7 @@ Before using the app you need to rename `config.py.template` to `config.py` and 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
 | `BOT_TOKEN` | `string` | **Required**. Telegram bot token (get one from [@BotFather](https://t.me/BotFather)) |
-| `CHAT_ID` | `int` | **Required**. Authorized chat ID that can use this bot|
+| `ALLOWED_CHAT_IDS` | `list[int]` | **Required**. List of ChatIDs that are allowed to use this bot|
 | `MSG_LIMIT` | `int` | **Required**. Row character limit, if unsure use 60 |
 | `BACKUP_SCRIPT_PATH` | `string` |  Path to your bash backup script |
 | `BACKUP_SCRIPT_ARGS` | `list[string]` |  Arguments for your backup script|
