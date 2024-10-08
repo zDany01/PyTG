@@ -72,7 +72,7 @@ def AuthCheck(chat_id: int) -> bool:
         bot.send_message(chat_id, "You are not authorized.")
     return allowed
 
-def executeCommand(path: str, args: list[str | int | bool] = [], errormsg: str = "") -> ProcessOutput:
+def executeCommand(path: str, args: list[str | int | bool] = [], chatID: int | None = None, errormsg: str | None = None) -> ProcessOutput:
     tlock.acquire()
     command: list[str] = []
     command.append(path)
@@ -93,8 +93,8 @@ def executeCommand(path: str, args: list[str | int | bool] = [], errormsg: str =
         tlock.release()
 
     if exitcode != 0:
-        if errormsg != "":
-            sendMsg(config.CHAT_ID, errormsg)
+        if errormsg and chatID:
+            sendMsg(chatID, errormsg)
 
         print("Executing command: ",end='')
         for part in command:
@@ -104,14 +104,14 @@ def executeCommand(path: str, args: list[str | int | bool] = [], errormsg: str =
         return ProcessOutput(exitcode, output.decode("utf-8"))
     return ProcessOutput(exitcode, output.decode("utf-8"))
 
-def getContainers(activeOnly: bool = False) -> list[str]:
+def getContainers(activeOnly: bool = False) -> list[str]: #merge
     containerlistprc: ProcessOutput = executeCommand("docker", ["ps", "-a", "-q"] if not activeOnly else ["ps", "-q"], "Unable to get container list")
     return containerlistprc.output.splitlines() if containerlistprc.good else None
 
-def getContainersData(Containers: Literal["ALL", "ACTIVE"] = "ACTIVE", formatString: str = "") -> str:
+def getContainersData(Containers: Literal["ALL", "ACTIVE"] = "ACTIVE", formatString: str = "") -> str: #merge
     return executeCommand("docker", ["ps", "-a", "--format", formatString] if Containers == "ALL" else ["ps", "--format", formatString]).output
 
-def getContainerData(CtID: str, formatString: str = None) -> str:
+def getContainerData(CtID: str, formatString: str = None) -> str: #merge
     return executeCommand("docker", ["ps", "-a", "--filter", "id=" + CtID, "--format", formatString] if formatString is not None else ["ps", "-a", "--filter", "id=" + CtID], "Unable to get container data for CtID: " + CtID).output.strip()
 
 def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str]:
@@ -120,7 +120,7 @@ def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str
         dataList.append(getContainerData(CtID, formatString))
     return dataList
 
-def startContainer(CtID: str, startOnly: bool = True, errormsg: str = "") -> int:
+def startContainer(CtID: str, startOnly: bool = True, errormsg: str = "") -> int: #merge
     """
     :param errormsg: this message will be displayed if there is an error when executing the start/restart command NOT if the container is already started
     :return 0: if started correctly
@@ -140,7 +140,7 @@ def startContainers(CtIDs: list[str], startOnly: bool = True) -> list[int]:
         startResult.append(startContainer(CtID, startOnly))
     return startResult
 
-def stopContainer(CtID: str, errormsg: str = "") -> int:
+def stopContainer(CtID: str, errormsg: str = "") -> int: #merge
     """
     :param errormsg: this message will be displayed if there is an error when executing the stop command NOT if the container is already stopped
     :return 0: if stopped correctly
@@ -356,11 +356,11 @@ class Commands:
 
     def backup(self, message: Message):
         if AuthCheck(message.chat.id):
-            executeCommand(config.BACKUP_SCRIPT_PATH, config.BACKUP_SCRIPT_ARGS, "Error during system backup")
+            executeCommand(config.BACKUP_SCRIPT_PATH, config.BACKUP_SCRIPT_ARGS, message.chat.id, "Error during system backup")
                     
     def updatedb(self, message: Message):
         if AuthCheck(message.chat.id):
-            executeCommand(config.NGINX_DB_UPDATE_PATH, errormsg= "Error while updating nginx IP database")
+            executeCommand(config.NGINX_DB_UPDATE_PATH, chatID=message.chat.id, errormsg= "Error while updating nginx IP database")
 
     def reboot(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -475,7 +475,7 @@ class Commands:
 
     def uptime(self, message: Message):
         if AuthCheck(message.chat.id):
-            commandResult: ProcessOutput = executeCommand("uptime", ["-p"], "Unable to get system uptime")
+            commandResult: ProcessOutput = executeCommand("uptime", ["-p"], message.chat.id, "Unable to get system uptime")
             if commandResult.good:
                 regexFilter: Match[str] = match("up (?:(?P<Weeks>\d+) weeks?, )?(?:(?P<Days>\d+) days?, )?(?:(?P<Hours>\d+) hours?, )?(?:(?P<Minutes>\d+) minutes?)", commandResult.output)
                 weeks: int = regexFilter.group("Weeks")
@@ -491,7 +491,7 @@ class Commands:
 
     def cleanup(self, message: Message):
         if (AuthCheck(message.chat.id)):
-            commandResult: ProcessOutput = executeCommand("docker", ["image", "prune", "-a", "-f"], "Unable to clean docker images")
+            commandResult: ProcessOutput = executeCommand("docker", ["image", "prune", "-a", "-f"], message.chat.id, "Unable to clean docker images")
             if(commandResult.good):
                 filteredOutput: Match[str] = search("(?<=space: )(?P<Size>[\d.]+)(?P<Unit>\w+)", commandResult.output)
                 freedDSpace: float = round(float(filteredOutput.group("Size")), 2)
@@ -507,7 +507,7 @@ class Commands:
 
     def showusr(self,message: Message):
         if AuthCheck(message.chat.id):
-            command = executeCommand("w",["-h","-i"],"Unable to get connected users")
+            command = executeCommand("w",["-h","-i"], message.chat.id, "Unable to get connected users")
             if not command.good:
                 return
             connectedUsers: list[tuple] = findall(r'(\w+)\s+pts\/\d+\s+((?:(?:[\d.]*){4})|(?:\[?(?:[a-f0-9:]+)\]?))\s+(\d+:\d+).+',command.output)
