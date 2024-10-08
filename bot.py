@@ -347,12 +347,11 @@ class Commands:
             filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", DockerChatInstance(message.chat.id).getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
             wordOffset: int = trunc(config.MSG_LIMIT/3)
             serviceStatus: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Name", ' ', wordOffset) + appendRemaining("Status", ' ', wordOffset) + appendRemaining("Time", ' ', wordOffset) + '\n')
-            serviceStatus.create(message.chat.id)
             for ctData in filteredCDatas:
                 for i in range(1,4):
                     serviceStatus.append(appendRemaining(ctData.group(i), ' ', wordOffset))
                 serviceStatus.append('\n')
-            serviceStatus.send()
+            serviceStatus.create(message.chat.id)
                 
     def lastbackup(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -470,12 +469,12 @@ class Commands:
                 return
             wordOffset: int = trunc(config.MSG_LIMIT/3)
             userMessage: CodeMessage = CodeMessage("PyBot",appendRemaining("User", ' ', wordOffset) + appendRemaining("IP Address", ' ', wordOffset) + appendRemaining("Login Time", ' ', wordOffset))
-            userMessage.create(message.chat.id)
+  
             for user in connectedUsers:
                 userMessage.append('\n')
                 for group in range(0,3):
                     userMessage.append(appendRemaining(user[group], ' ', wordOffset))
-            userMessage.send()
+            userMessage.create(message.chat.id)
 
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
