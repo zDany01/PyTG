@@ -11,6 +11,7 @@ from origamibot.util import condition
 from subprocess import Popen, PIPE
 from origamibot.core.teletypes import *
 from re import *
+from botutils import DockerChatInstance, docker_manager
 
 try:
     import config
@@ -104,59 +105,6 @@ def executeCommand(path: str, args: list[str | int | bool] = [], chatID: int | N
         return ProcessOutput(exitcode, output.decode("utf-8"))
     return ProcessOutput(exitcode, output.decode("utf-8"))
 
-def getContainers(activeOnly: bool = False) -> list[str]: #merge
-    containerlistprc: ProcessOutput = executeCommand("docker", ["ps", "-a", "-q"] if not activeOnly else ["ps", "-q"], "Unable to get container list")
-    return containerlistprc.output.splitlines() if containerlistprc.good else None
-
-def getContainersData(Containers: Literal["ALL", "ACTIVE"] = "ACTIVE", formatString: str = "") -> str: #merge
-    return executeCommand("docker", ["ps", "-a", "--format", formatString] if Containers == "ALL" else ["ps", "--format", formatString]).output
-
-def getContainerData(CtID: str, formatString: str = None) -> str: #merge
-    return executeCommand("docker", ["ps", "-a", "--filter", "id=" + CtID, "--format", formatString] if formatString is not None else ["ps", "-a", "--filter", "id=" + CtID], "Unable to get container data for CtID: " + CtID).output.strip()
-
-def getContainerDataList(CtIDs: list[str], formatString: str = None) -> list[str]:
-    dataList: list[str] = []
-    for CtID in CtIDs:
-        dataList.append(getContainerData(CtID, formatString))
-    return dataList
-
-def startContainer(CtID: str, startOnly: bool = True, errormsg: str = "") -> int: #merge
-    """
-    :param errormsg: this message will be displayed if there is an error when executing the start/restart command NOT if the container is already started
-    :return 0: if started correctly
-    :return 1: if already started
-    :return 2: if restarted correctly
-    :return -1: if an error occured during starting/restarting
-    """
-    if getContainerData(CtID, "{{.Status}}").startswith("Up"):
-        if (startOnly):
-            return 1
-        return 2 if executeCommand("docker", ["restart", CtID], errormsg).good else -1
-    return 0 if executeCommand("docker", ["start", CtID], errormsg).good else -1
-
-def startContainers(CtIDs: list[str], startOnly: bool = True) -> list[int]:
-    startResult: list[int] = []
-    for CtID in CtIDs:
-        startResult.append(startContainer(CtID, startOnly))
-    return startResult
-
-def stopContainer(CtID: str, errormsg: str = "") -> int: #merge
-    """
-    :param errormsg: this message will be displayed if there is an error when executing the stop command NOT if the container is already stopped
-    :return 0: if stopped correctly
-    :return 1: if already stopped
-    :return -1: if an error occured during stopping
-    """
-    if getContainerData(CtID, "{{.Status}}").startswith("Exited"):
-        return 1
-    return 0 if executeCommand("docker", ["stop", CtID], errormsg).good else -1
-
-def stopContainers(CtIDs: list[str]) -> list[int]:
-    stopResults: list[int] = []
-    for CtID in CtIDs:
-        stopResults.append(stopContainer(CtID))
-    return stopResults
-
 def sendMsg(chatID: int, message: str, replyMarkup: ReplyMarkup = None) -> Message:
     return bot.send_message(chatID, "<b>PyBot</b>\n" + message, "HTML", reply_markup=replyMarkup)
 
@@ -172,11 +120,13 @@ def createDockerSelectMenu(chatID: int | None, CtIDs: list[str], callbackSfx: st
             messageMenu: list[list[InlineKeyboardButton]] = []
             containerNo: int = len(CtIDs)
             rowOffset: int = trunc(containerNo/2)
+
+            docker: DockerChatInstance = DockerChatInstance(chatID)
             for i in range(0, rowOffset):
-                messageMenu.append([InlineKeyboardButton(getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
+                messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[i], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i]), InlineKeyboardButton(docker.getContainerData(CtIDs[i+rowOffset], "{{.Names}}"), callback_data=callbackSfx + CtIDs[i+rowOffset])])
 
             if rowOffset * 2 != containerNo:
-                messageMenu.append([InlineKeyboardButton(getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])]) #-1 obtain the last element of the list
+                messageMenu.append([InlineKeyboardButton(docker.getContainerData(CtIDs[-1], "{{.Names}}"), callback_data=callbackSfx + CtIDs[-1])]) #-1 obtain the last element of the list
 
             if closingRow is not None:
                 messageMenu.append(closingRow)
@@ -206,7 +156,7 @@ class CallbackAction:
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
             CtID: str = cbQuery.data.replace("dstart-", "")
-            bot.answer_callback_query(cbQuery.id, "Container started succesfully" if startContainer(CtID) == 0 else "Unable to start this container")
+            bot.answer_callback_query(cbQuery.id, "Container started succesfully" if DockerChatInstance(queryMsg.chat.id).startContainer(CtID) == 0 else "Unable to start this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("dstop-"))
@@ -214,7 +164,7 @@ class CallbackAction:
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
             CtID: str = cbQuery.data.replace("dstop-", "")
-            bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if stopContainer(CtID) == 0 else "Unable to stop this container")
+            bot.answer_callback_query(cbQuery.id, "Container stopped succesfully" if DockerChatInstance(queryMsg.chat.id).stopContainer(CtID) == 0 else "Unable to stop this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("drestart-"))
@@ -222,7 +172,7 @@ class CallbackAction:
         queryMsg: Message = cbQuery.message
         if AuthCheck(queryMsg.chat.id):
             CtID: str = cbQuery.data.replace("drestart-", "")
-            bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if startContainer(CtID, False) == 2 else "Unable to restart this container")
+            bot.answer_callback_query(cbQuery.id, "Container restarted succesfully" if DockerChatInstance(queryMsg.chat.id).startContainer(CtID, False) == 2 else "Unable to restart this container")
             self.createMenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "docker-" + CtID), True)
 
     @condition(lambda c, cbQuery: cbQuery.data.startswith("dlog-"))
@@ -235,7 +185,7 @@ class CallbackAction:
                 bot.answer_callback_query(cbQuery.id, "Unable to get container logs")
                 return
             virtualFile: StringIO = StringIO()
-            virtualFile.name = f'{getContainerData(CtID, "{{.Names}}")} ({strftime("%b %-d %Y %H-%M-%S", localtime())}).log'
+            virtualFile.name = f'{DockerChatInstance(chatID).getContainerData(CtID, "{{.Names}}")} ({strftime("%b %-d %Y %H-%M-%S", localtime())}).log'
             virtualFile.write(logCommand.output)
             virtualFile.flush()
             virtualFile.seek(0)
@@ -254,9 +204,10 @@ class CallbackAction:
     def createMenu(self, cbQuery: CallbackQuery, updateOnly: bool | None = False):
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
+            docker: DockerChatInstance = DockerChatInstance(menuMessage.chat.id)
             CtID: str = cbQuery.data.replace("docker-", "")
-            if CtID in getContainers():
-                ctData: str = match("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)\[\d+.?\w+ \(virtual (?P<Size>.+)\)\]\/(?P<UpdTime>.+)", getContainerData(CtID, "{{.Names}} -> {{.Status}}[{{.Size}}]/{{.CreatedAt}}"))
+            if CtID in docker.getContainers():
+                ctData: str = match("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)\[\d+.?\w+ \(virtual (?P<Size>.+)\)\]\/(?P<UpdTime>.+)", docker.getContainerData(CtID, "{{.Names}} -> {{.Status}}[{{.Size}}]/{{.CreatedAt}}"))
                 ctName: str = ctData.group("ContainerName")
                 ctStatus: str = ctData.group("ContainerStatus")
                 ctRunning: bool = ctStatus == "Up"
@@ -288,7 +239,7 @@ class CallbackAction:
     def reOpenMenu(self, cbQuery: CallbackQuery):
         menuMessage: Message = cbQuery.message
         if AuthCheck(menuMessage.chat.id):
-            createDockerSelectMenu(None, getContainers(), closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=menuMessage)
+            createDockerSelectMenu(None, DockerChatInstance(menuMessage.chat.id).getContainers(), closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=menuMessage)
             bot.answer_callback_query(cbQuery.id)
 
     @condition(lambda c, cbQuery: cbQuery.data == "ryes")
@@ -372,7 +323,8 @@ class Commands:
 
     def redocker(self, message: Message):
         if AuthCheck(message.chat.id):
-            containerlist: list[str] = getContainers(True)
+            docker: DockerChatInstance = DockerChatInstance(message.chat.id)
+            containerlist: list[str] = docker.getContainers(True)
             if len(containerlist) == 0:
                 sendMsg(message.chat.id, "There are no active containers to restart")
                 return
@@ -380,9 +332,9 @@ class Commands:
             progressMessage.create(message.chat.id)
             restartedCount: int = 0
             for container in containerlist:
-                containerName: str = getContainerData(container, "{{.Names}}")
+                containerName: str = docker.getContainerData(container, "{{.Names}}")
                 progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT)).send()
-                if startContainer(container, False, "Unable to restart" + container) == 2:
+                if docker.startContainer(container, False, "Unable to restart" + container) == 2:
                         progressMessage.append('🔁')
                         restartedCount += 1
                 else:
@@ -392,7 +344,7 @@ class Commands:
     
     def showsvc(self, message: Message):
         if AuthCheck(message.chat.id):
-            filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
+            filteredCDatas: Iterator[Match[str]] = finditer("(?P<ContainerName>[\w-]+) -> (?P<ContainerStatus>\w+)(?: \(\d+\))? (?P<Time>.+)", DockerChatInstance(message.chat.id).getContainersData("ALL", "{{.Names}} -> {{.Status}}"))
             wordOffset: int = trunc(config.MSG_LIMIT/3)
             serviceStatus: CodeMessage = CodeMessage("PyDocker", appendRemaining("Container Name", ' ', wordOffset) + appendRemaining("Status", ' ', wordOffset) + appendRemaining("Time", ' ', wordOffset) + '\n')
             serviceStatus.create(message.chat.id)
@@ -411,16 +363,17 @@ class Commands:
 
     def dockerstart(self, message: Message):
         if AuthCheck(message.chat.id):
-            containerlist: list[str] = getContainers()
+            docker: DockerChatInstance = DockerChatInstance(message.chat.id)
+            containerlist: list[str] = docker.getContainers()
             progressMessage = CodeMessage("PyDocker", "Starting all containers..")
             progressMessage.create(message.chat.id)
             containerNo: int = len(containerlist)
             startedCount: int = 0
             activeCount: int = 0
             for container in containerlist:
-                containerName: str = getContainerData(container, "{{.Names}}")
+                containerName: str = docker.getContainerData(container, "{{.Names}}")
                 progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT - 10)).send()
-                match startContainer(container, errormsg="Unable to start" + container):
+                match docker.startContainer(container, errormsg="Unable to start" + container):
                     case 0:
                         progressMessage.append('🆙')
                         startedCount += 1
@@ -443,16 +396,17 @@ class Commands:
 
     def dockerstop(self, message: Message):
         if AuthCheck(message.chat.id):
-            containerlist: list[str] = getContainers()
+            docker: DockerChatInstance = DockerChatInstance(message.chat.id)
+            containerlist: list[str] = docker.getContainers()
             progressMessage = CodeMessage("PyDocker", "Stopping all containers..")
             progressMessage.create(message.chat.id)
             containerNo: int = len(containerlist)
             stoppedCount: int = 0
             inactiveCount: int = 0
             for container in containerlist:
-                containerName: str = getContainerData(container, "{{.Names}}")
+                containerName: str = docker.getContainerData(container, "{{.Names}}")
                 progressMessage.append(appendRemaining('\n' + containerName, ' ', config.MSG_LIMIT - 10)).send() # Additional MSG_LIMIT - 1 not required since LF already take 1 charcount of inusable space
-                match stopContainer(container, "Unable to stop" + container):
+                match docker.stopContainer(container, "Unable to stop" + container):
                     case 0:
                         progressMessage.append('⛔')
                         stoppedCount += 1
@@ -486,7 +440,7 @@ class Commands:
 
     def dockermenu(self, message: Message):
         if AuthCheck(message.chat.id):
-            containerList: list[str] = getContainers()
+            containerList: list[str] = DockerChatInstance(message.chat.id).getContainers()
             createDockerSelectMenu(message.chat.id, containerList, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
 
     def cleanup(self, message: Message):
@@ -525,6 +479,10 @@ class Commands:
 
 if(config.HEARTBEAT_ENABLED):
     Timer(5, heartbeat).start()
+
+#TODO: Refactor and remove this abomination
+docker_manager.executeCommand = executeCommand
+docker_manager.ProcessOutput = ProcessOutput
 
 bot.start()
 bot.add_commands(Commands())
