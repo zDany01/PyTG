@@ -32,7 +32,7 @@ From here you can either start manually the python script by accessing first to 
 > Remember to run the Python bot with privileges
 
 ## Bot settings
-Before using the app you need to rename `config.py.template` to `config.py` and modify some settings in it:
+Before using the app you need to rename the `config.py.template` file (which is located in the app subdirectory) to `config.py` and modify some settings in it:
 
 | Parameter | Type     | Description                |
 | :-------- | :------- | :------------------------- |
