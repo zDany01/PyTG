@@ -11,6 +11,16 @@ class DockerManager:
         containerlistprc: ProcessOutput = executeCommand("docker", ["ps", "-a", "-q"] if not activeOnly else ["ps", "-q"], self.chatID, "Unable to get container list")
         return containerlistprc.output.splitlines() if containerlistprc.good else None
 
+    def getContainerIDs(self, filterString: str) -> list[str]:
+        return executeCommand("docker", ["ps", "-a", "--filter", filterString, "--format", "{{.ID}}"], self.chatID, "Unable to get container list").output.splitlines()
+
+    def getContainerID(self, filterString: str) -> str:
+        try:
+            return self.getContainerIDs(filterString)[0]
+        except IndexError:
+            return ""
+
+
     def getContainersData(self, Containers: Literal["ALL", "ACTIVE"] = "ACTIVE", formatString: str = "") -> str: #merge
         return executeCommand("docker", ["ps", "-a", "--format", formatString] if Containers == "ALL" else ["ps", "--format", formatString]).output
 
@@ -22,6 +32,34 @@ class DockerManager:
         for CtID in CtIDs:
             dataList.append(self.getContainerData(CtID, formatString))
         return dataList
+
+    def parseContainers(self, CtIDs: list[str], CtNames: list[str]) -> tuple[list[str], list[str]]:
+        """
+        Parses the given lists to find existing containers
+
+        Params:
+            CtIDs(list[str]): a list of container IDs
+            CtNames(list[str]): a list of container names
+
+        Returns:
+            parsedTuple(tuple[list[str], list[str]]): a tuple of two lists which contains valid ids and invalid container names/ids
+        """
+        valid: list[str] = []
+        invalid: list[str] = []
+        if CtIDs:
+            for CtID in CtIDs:
+                if self.getContainerData(CtID, "{{.ID}}"): #if the container does not exists then by filtering its ID and using that output format the result string should be void, so the if doesn't get executed
+                    valid.append(CtID)
+                else:
+                    invalid.append(CtID)
+        if CtNames:
+            for CtName in CtNames:
+                id: str = self.getContainerID("name=" + CtName).strip()
+                if id:
+                    valid.append(id)
+                else:
+                    invalid.append(CtName)
+        return (valid, invalid)
 
     def startContainer(self, CtID: str, startOnly: bool = True, errormsg: str = "") -> int: #merge
         """
