@@ -131,7 +131,7 @@ class Commands:
                 case [containerNo, 0]:
                     reply = "All containers stopped"
                 case _:
-                    reply = f"Started {stoppedCount} of {containerNo} containers ({inactiveCount} were already stopped)"
+                    reply = f"Stopped {stoppedCount} of {containerNo} containers ({inactiveCount} were already stopped)"
             sendMsg(message.chat.id, reply)
 
     def uptime(self, message: Message):
