@@ -10,16 +10,13 @@ from shared import botInstance as bot
 from botutils import ProcessOutput, AuthCheck, sendMsg, executeCommand, appendRemaining, editMsg
 from code_message import CodeMessage
 from docker_manager import DockerManager as DockerChatInstance, createDockerSelectMenu
+from scriptmanager import scriptManager
 from callback_actions import CallbackActions
 
 class Commands:
     def backup(self, message: Message):
         if AuthCheck(message.chat.id):
             executeCommand(config.BACKUP_SCRIPT_PATH, config.BACKUP_SCRIPT_ARGS, message.chat.id, "Error during system backup")
-
-    def updatedb(self, message: Message):
-        if AuthCheck(message.chat.id):
-            executeCommand(config.NGINX_DB_UPDATE_PATH, chatID=message.chat.id, errormsg="Error while updating nginx IP database")
 
     def reboot(self, message: Message):
         if AuthCheck(message.chat.id):
@@ -183,3 +180,7 @@ class Commands:
                 for group in range(0, 3):
                     userMessage.append(appendRemaining(user[group], ' ', wordOffset))
             userMessage.create(message.chat.id)
+
+    def scripts(self, message: Message):
+        if AuthCheck(message.chat.id):
+            scriptManager.createScriptSelectMenu(message.chat.id, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])

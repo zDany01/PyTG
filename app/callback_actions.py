@@ -2,13 +2,15 @@ from math import trunc
 from time import strftime, strptime, localtime
 from io import StringIO
 from re import *
+from os.path import exists
 from origamibot.util import condition
 from origamibot.types import *
 
 import config
-from shared import botInstance as bot, scriptManager
+from shared import botInstance as bot
 from botutils import ProcessOutput, AuthCheck, sendMsg, executeCommand, appendRemaining, editMsg
 from docker_manager import DockerManager as DockerChatInstance, createDockerSelectMenu
+from scriptmanager import scriptManager
 from code_message import CodeMessage
 from script import Script
 class CallbackActions:
@@ -186,6 +188,11 @@ class CallbackActions:
             script: Script = scriptManager.find(scriptName)
             if not script:
                 bot.answer_callback_query(cbQuery.id, "Unable to find the script")
+                return
+            if not exists(script.path):
+                bot.answer_callback_query(cbQuery.id, "The script file has been deleted")
+                scriptManager.remove(script)
+                scriptManager.createScriptSelectMenu(closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=queryMsg)
                 return
             scrOut: ProcessOutput = script.execute()
             if not scrOut.good:
