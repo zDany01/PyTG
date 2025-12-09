@@ -181,6 +181,6 @@ class Commands:
                     userMessage.append(appendRemaining(user[group], ' ', wordOffset))
             userMessage.create(message.chat.id)
 
-    def scripts(self, message: Message):
+    def scriptmenu(self, message: Message):
         if AuthCheck(message.chat.id):
-            scriptManager.createScriptSelectMenu(message.chat.id, closingRow=[InlineKeyboardButton("Close", callback_data="exit")])
+            scriptManager.createScriptSelectMenu(message.chat.id, closingRow=[InlineKeyboardButton("Reload", callback_data="reloadscript"), InlineKeyboardButton("Close", callback_data="exit")])

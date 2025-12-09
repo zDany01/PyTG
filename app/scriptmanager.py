@@ -11,6 +11,7 @@ class ScriptManager:
     def __init__(self, scriptPath: str):
         self.scriptList: list[Script] = []
         self.enabled: bool = False
+        self.currentPath = scriptPath
         if not scriptPath or not exists(scriptPath):
             return
         
@@ -58,10 +59,23 @@ class ScriptManager:
         if closingRow is not None:
             messageMenu.append(closingRow)
 
+        messagetext: str = f"Loaded {scriptNo} script\nSelect which script to launch"
         if messageHolder is None:
-            return sendMsg(chatID, "Select a script", InlineKeyboardMarkup(messageMenu))
+            return sendMsg(chatID, messagetext, InlineKeyboardMarkup(messageMenu))
         else:
-            return editMsg(messageHolder, "Select a script", replyMarkup=InlineKeyboardMarkup(messageMenu))
+            return editMsg(messageHolder, messagetext, replyMarkup=InlineKeyboardMarkup(messageMenu))
+        
+    def listEquals(self, scriptList: list[Script]) -> bool:
+        scriptNo: int = len(self.scriptList)
+        if scriptNo != len(scriptList):
+            return False
+        for i in range(0, scriptNo):
+            if self.scriptList[i] != scriptList[i]:
+                return False
+        return True
+        
+    def reload(self):
+        self.__init__(self.currentPath)
         
 
 scriptManager: ScriptManager = ScriptManager(SCRIPTS_DIRECTORY_PATH)

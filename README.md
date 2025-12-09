@@ -63,13 +63,15 @@ Before the bot can function, you must configure your secrets and settings.
 | `BACKUP_SCRIPT_PATH` | `string` | Absolute path to your bash backup script |
 | `BACKUP_SCRIPT_ARGS` | `list[string]` | Arguments to pass to the backup script |
 | `BACKUP_FLAG_PATH` | `string` | Path for the backup status flag file |
-| `NGINX_DB_UPDATE_PATH` | `string` | Path to your Nginx database update script |
+| `SCRIPTS_DIRECTORY_PATH` | `string` | Absolute path to your scripts directory |
 | `HEARTBEAT_ENABLED` | `bool` | Enable/Disable the heartbeat monitoring service |
 | `HEARTBEAT_URL` | `string` | The API URL to fetch for heartbeat checks |
 | `HEARTBEAT_INTERVAL` | `int` | Interval (in seconds) between heartbeat checks |
 | `HEARTBEAT_MAX_RETRIES` | `int` | Max attempts before disabling heartbeat on failure |
 | `HEARTBEAT_FAIL_ON_ERROR`| `bool` | If `True`, the program closes if the heartbeat fails |
 | `HEARTBEAT_LOG_SUCCESS` | `bool` | If `True`, logs every successful heartbeat request |
+
+> **Note:** If `SCRIPTS_DIRECTORY_PATH` is set the bot will only load files with the executable tag.
 
 ## 🚀 Usage
 

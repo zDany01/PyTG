@@ -25,6 +25,8 @@ class CallbackActions:
     # disk-[N] -> obtain disk device data
     # dport-[ID] -> show currently published port of a docker container
     # script-[name] -> execute script
+    # scriptmenu -> open the script menu
+    # reloadscript -> reload the script from the directory
 
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
@@ -180,6 +182,24 @@ class CallbackActions:
             portMsg.send(InlineKeyboardMarkup([[InlineKeyboardButton("Back", callback_data=f"docker-{CtID}")]]))
             bot.answer_callback_query(cbQuery.id)
 
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("reloadscript"))
+    def reloadscripts(self, cbQuery: CallbackQuery):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
+            oldList = scriptManager.scriptList
+            scriptManager.reload()
+            if scriptManager.listEquals(oldList):
+                bot.answer_callback_query(cbQuery.id, "No changes found")
+                return
+            self.openscriptmenu(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "scriptmenu"))
+
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("scriptmenu"))
+    def openscriptmenu(self, cbQuery: CallbackQuery):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
+            scriptManager.createScriptSelectMenu(closingRow=[InlineKeyboardButton("Reload", callback_data="reloadscript"), InlineKeyboardButton("Close", callback_data="exit")], messageHolder=queryMsg)
+            bot.answer_callback_query(cbQuery.id)
+
     @condition(lambda _, cbQuery: cbQuery.data.startswith("script-"))
     def callscript(self, cbQuery: CallbackQuery):
         queryMsg: Message = cbQuery.message
@@ -189,14 +209,15 @@ class CallbackActions:
             if not script:
                 bot.answer_callback_query(cbQuery.id, "Unable to find the script")
                 return
+            closeBtn: InlineKeyboardButton = InlineKeyboardButton("Close", callback_data="exit")
+            menuBtn: InlineKeyboardButton = InlineKeyboardButton("Back", callback_data="scriptmenu")
             if not exists(script.path):
                 bot.answer_callback_query(cbQuery.id, "The script file has been deleted")
-                scriptManager.remove(script)
-                scriptManager.createScriptSelectMenu(closingRow=[InlineKeyboardButton("Close", callback_data="exit")], messageHolder=queryMsg)
+                self.reloadscripts(CallbackQuery(cbQuery.id, bot.get_me(), cbQuery.chat_instance, queryMsg, cbQuery.inline_message_id, "reloadscript"))
                 return
             scrOut: ProcessOutput = script.execute()
             if not scrOut.good:
                 bot.answer_callback_query(cbQuery.id, "There was an error during the execution of the script")
                 return
-            editMsg(queryMsg, "Menu closed")
+            editMsg(queryMsg, f"Executed script: <b>{script.name}</b>", replyMarkup=InlineKeyboardMarkup([[menuBtn,closeBtn]]))
             bot.answer_callback_query(cbQuery.id, "Script executed correctly")

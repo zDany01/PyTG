@@ -1,6 +1,5 @@
 ping - check if the bot is alive
 backup - start a manual backup
-updatedb - update nginx ip database
 reboot - reboot the server
 dockerstart - start all docker containers
 redocker - restart all active docker containers
@@ -12,3 +11,4 @@ dockermenu - show containers management menu
 cleanup - delete unused and dangling docker images
 diskinfo - show connected disk devices' data
 showusr - show currently connected users
+scriptmenu - show the script manager menu
