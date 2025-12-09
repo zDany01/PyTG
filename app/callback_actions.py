@@ -6,13 +6,14 @@ from origamibot.util import condition
 from origamibot.types import *
 
 import config
-from shared import botInstance as bot
+from shared import botInstance as bot, scriptManager
 from botutils import ProcessOutput, AuthCheck, sendMsg, executeCommand, appendRemaining, editMsg
 from docker_manager import DockerManager as DockerChatInstance, createDockerSelectMenu
 from code_message import CodeMessage
+from script import Script
 class CallbackActions:
     # CallBack -> Action
-    # exit -> closes the docker selection menu
+    # exit -> closes the selection menu
     # docker-[ID] -> create a container managment menu for that container ID
     # reopen -> recreate a docker selection menu
     # dstart-[ID] -> start a docker container
@@ -21,6 +22,7 @@ class CallbackActions:
     # dlog-[ID] -> get last execution log of a docker container
     # disk-[N] -> obtain disk device data
     # dport-[ID] -> show currently published port of a docker container
+    # script-[name] -> execute script
 
     def logquery(self, cbQuery: CallbackQuery):
         print(f"Recived query: {cbQuery.data} from {cbQuery.from_user.username}")
@@ -175,3 +177,19 @@ class CallbackActions:
                 portMsg.append('\n' + appendRemaining(ctData.group("CtPort"), ' ', wordOffset) + appendRemaining("  " + ctData.group("Proto").upper(), ' ', wordOffset) + appendRemaining(ctData.group("SckPort"), ' ', wordOffset))
             portMsg.send(InlineKeyboardMarkup([[InlineKeyboardButton("Back", callback_data=f"docker-{CtID}")]]))
             bot.answer_callback_query(cbQuery.id)
+
+    @condition(lambda _, cbQuery: cbQuery.data.startswith("script-"))
+    def callscript(self, cbQuery: CallbackQuery):
+        queryMsg: Message = cbQuery.message
+        if AuthCheck(queryMsg.chat.id):
+            scriptName: str = cbQuery.data.replace("script-","")
+            script: Script = scriptManager.find(scriptName)
+            if not script:
+                bot.answer_callback_query(cbQuery.id, "Unable to find the script")
+                return
+            scrOut: ProcessOutput = script.execute()
+            if not scrOut.good:
+                bot.answer_callback_query(cbQuery.id, "There was an error during the execution of the script")
+                return
+            editMsg(queryMsg, "Menu closed")
+            bot.answer_callback_query(cbQuery.id, "Script executed correctly")
