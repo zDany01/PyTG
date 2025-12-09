@@ -13,7 +13,7 @@ BACKUP_SCRIPT_ARGS = [] #Ex [arg1, arg2, arg3]
 # Default: <BackupScriptWorkingDirectory>/update
 # Change manually if different
 BACKUP_FLAG_PATH = BACKUP_SCRIPT_PATH[0:BACKUP_SCRIPT_PATH.rfind("/")] + "/update"
-NGINX_DB_UPDATE_PATH = ""
+SCRIPTS_DIRECTORY_PATH = ""
 
 # Heartbeat
 # These settings allow the bot to ping or fetch a URL to register it into a monitor service
